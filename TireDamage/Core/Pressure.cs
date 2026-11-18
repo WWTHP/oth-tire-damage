@@ -14,8 +14,11 @@ namespace TireDamage
         /// <summary>Below this the tires wear while driving and suffer more from hits (pinch flats).</summary>
         public float SafePsi = 16f;
 
-        /// <summary>Grip multiplier at <see cref="MinPsi"/> (1 at normal, linear in between).</summary>
+        /// <summary>Traction multiplier on loose ground (sand, snow, ice) at <see cref="MinPsi"/> (1 at normal, linear in between).</summary>
         public float GripAtMin = 1.3f;
+
+        /// <summary>Cornering grip multiplier at <see cref="MinPsi"/>, on any ground (the sidewalls flex).</summary>
+        public float CornerGripAtMin = 0.85f;
 
         /// <summary>Wheel radius multiplier at <see cref="MinPsi"/> (the tire squats: lower top speed).</summary>
         public float RadiusAtMin = 0.92f;
@@ -29,7 +32,8 @@ namespace TireDamage
 
     /// <summary>
     /// Tire pressure, one value for all tires. Full pressure is the game's own tire: every effect is
-    /// exactly neutral there. Lower pressure gives more grip and a smaller rolling radius (slower);
+    /// exactly neutral there. Lower pressure gives more traction on loose ground (sand, snow, ice),
+    /// less cornering grip everywhere, and a smaller rolling radius (slower);
     /// below the safe pressure, driving wears the tires and hits hurt them more.
     /// Rules are sanitised so odd settings (min above normal, safe outside the range) stay usable.
     /// </summary>
@@ -64,8 +68,46 @@ namespace TireDamage
             return (normal - Clamp(psi, r)) / (normal - min);
         }
 
+        /// <summary>
+        /// Ground labels (the game's <c>MaterialLabel</c> flags) where low pressure adds traction:
+        /// Snow 0x800, DeepSnow 0x1000, Ice 0x2000, Sand 0x4000, DeepSand 0x8000, QuickSand 0x10000,
+        /// ShallowSnow 0x40000.
+        /// </summary>
+        public const int LooseLabels = 0x800 | 0x1000 | 0x2000 | 0x4000 | 0x8000 | 0x10000 | 0x40000;
+
+        public static bool IsLoose(int label) => (label & LooseLabels) != 0;
+
+        /// <summary>Straight-line traction on loose ground (≥ 1).</summary>
         public static float Grip(float psi, PressureRules r) =>
-            Lerp(1f, Finite(r.GripAtMin, 1f), Softness(psi, r));
+            Lerp(1f, Math.Max(1f, Finite(r.GripAtMin, 1f)), Softness(psi, r));
+
+        /// <summary>Cornering grip (≤ 1).</summary>
+        public static float CornerGrip(float psi, PressureRules r) =>
+            Lerp(1f, Math.Clamp(Finite(r.CornerGripAtMin, 1f), 0.3f, 1f), Softness(psi, r));
+
+        /// <summary>
+        /// How much of a tire's slip is sideways (cornering), 0 (all along the tire: traction,
+        /// braking) → 1 (all sideways). Each slip is measured against its peak so the two compare;
+        /// <paramref name="idle"/> when the tire hardly slips at all or the peaks are unknown.
+        /// </summary>
+        public static float LateralShare(float slipAngle, float peakAngle, float slipRatio, float peakRatio, float idle = 0.5f)
+        {
+            if (!(peakAngle > 0f) || !(peakRatio > 0f) || !float.IsFinite(slipAngle) || !float.IsFinite(slipRatio)) return idle;
+            float lat = Math.Abs(slipAngle) / peakAngle, lon = Math.Abs(slipRatio) / peakRatio;
+            if (lat + lon < 0.05f) return idle;
+            return lat / (lat + lon);
+        }
+
+        /// <summary>
+        /// The friction multiplier for a good tire: traction (loose ground only) blended with
+        /// cornering grip by the tire's <paramref name="lateralShare"/>. Exactly 1 at full pressure.
+        /// </summary>
+        public static float WheelGrip(float psi, PressureRules r, bool loose, float lateralShare)
+        {
+            float traction = loose ? Grip(psi, r) : 1f;
+            float t = float.IsFinite(lateralShare) ? lateralShare : 0.5f;
+            return Lerp(traction, CornerGrip(psi, r), t);
+        }
 
         public static float RadiusMul(float psi, PressureRules r) =>
             Lerp(1f, Math.Clamp(Finite(r.RadiusAtMin, 1f), 0.5f, 1f), Softness(psi, r));
@@ -85,15 +127,16 @@ namespace TireDamage
         public static float HitFactor(float psi, PressureRules r) =>
             Lerp(1f, Math.Max(1f, Finite(r.HitFactorAtMin, 1f)), Danger(psi, r));
 
-        /// <summary>Short effect summary for the UI, e.g. "Grip +15%  ·  Speed -4%  ·  Wearing".</summary>
+        /// <summary>Short effect summary for the UI, e.g. "Sand/snow +15%  ·  Corners -8%  ·  Speed -4%".</summary>
         public static string Describe(float psi, PressureRules r)
         {
             if (Softness(psi, r) <= 0f) return "Full pressure: normal grip and speed";
-            int grip = (int)Math.Round((Grip(psi, r) - 1f) * 100f);
-            int speed = (int)Math.Round((RadiusMul(psi, r) - 1f) * 100f);
-            var text = $"Grip {grip:+0;-0;0}%  ·  Speed {speed:+0;-0;0}%";
+            int grip = Percent(Grip(psi, r)), corner = Percent(CornerGrip(psi, r)), speed = Percent(RadiusMul(psi, r));
+            var text = $"Sand/snow {grip:+0;-0;0}%  ·  Corners {corner:+0;-0;0}%  ·  Speed {speed:+0;-0;0}%";
             return Danger(psi, r) > 0f ? text + "  ·  TOO LOW: tires wearing" : text;
         }
+
+        private static int Percent(float mul) => (int)Math.Round((mul - 1f) * 100f, MidpointRounding.AwayFromZero);
 
         private static float Lerp(float a, float b, float t) => a + (b - a) * Math.Clamp(t, 0f, 1f);
 

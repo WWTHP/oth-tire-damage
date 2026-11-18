@@ -6,8 +6,9 @@ namespace TireDamage
 {
     /// <summary>
     /// Tire state of the local car: detects hits (suspension contact speed per wheel, hard body
-    /// impacts near a wheel), wears popped tires while driving, applies the flat effect (smaller
-    /// wheel radius, less grip) through VPP, and runs the hold-to-repair field repair.
+    /// impacts near a wheel), wears popped tires while driving, applies the flat and pressure effects
+    /// (wheel radius in Update; grip per fixed step, since the pressure grip depends on the ground and
+    /// on whether the tire is cornering) through VPP, and runs the hold-to-repair field repair.
     /// </summary>
     internal static class Tires
     {
@@ -20,7 +21,9 @@ namespace TireDamage
             public Vector3 Local;          // wheel position in the vehicle's local space
             public float BaseRadius;       // the game's radius for this wheel
             public float SetRadius = -1f;  // the radius we last set (-1 = untouched)
-            public bool GripSet;
+            public float Grip = 1f;        // friction multiplier we last set (1 = untouched)
+            public float Share = 0.5f;     // smoothed sideways share of the tire's slip
+            public bool Loose;             // on sand, snow or ice (last fixed step)
             public float NextHit;
         }
 
@@ -58,6 +61,13 @@ namespace TireDamage
 
         public static string Label(int i) => Wheels[i].Label;
         public static Tire TireAt(int i) => Wheels[i].Tire;
+
+        /// <summary>Grip multiplier on tire <paramref name="i"/> now, and whether it is on sand/snow/ice.</summary>
+        public static float GripAt(int i, out bool loose)
+        {
+            loose = Wheels[i].Loose;
+            return Wheels[i].Grip;
+        }
 
         public static bool AnyDamage()
         {
@@ -102,12 +112,16 @@ namespace TireDamage
             var states = v.wheelState;
             if (states == null) return;
             int n = Math.Min(states.Length, Wheels.Count);
+            var pr = Settings.PressureRules();
+            float psi = Pressure.Clamp(Settings.TirePsi.Value, pr);
+            bool soft = Pressure.Softness(psi, pr) > 0f;
             for (int i = 0; i < n; i++)
             {
                 var ws = states[i];
                 if (ws == null) continue;
                 float speed = ws.suspensionState.contactSpeed;
                 Damage(i, Tire.ImpactDamage(speed, rules), speed, "suspension", rules);
+                UpdateGrip(v, i, ws, soft, psi, pr);
             }
 
             if (Settings.BodyHits.Value && v.isHardImpact)
@@ -124,6 +138,40 @@ namespace TireDamage
                 if (nearest >= 0)
                     Damage(nearest, Tire.ImpactDamage(speed, rules) * Settings.BodyHitScale.Value, speed, "body", rules);
             }
+        }
+
+        /// <summary>
+        /// Friction multiplier of wheel <paramref name="i"/>: flat tires a fixed value; good tires at
+        /// low pressure blend extra traction (sand/snow/ice only) with less cornering grip by how
+        /// much of the tire's slip is sideways. Written only when it changes noticeably.
+        /// </summary>
+        private static void UpdateGrip(Il2CppVehiclePhysics.VehicleBase v, int i, Il2CppVehiclePhysics.VehicleBase.WheelState ws,
+                                       bool soft, float psi, PressureRules pr)
+        {
+            var w = Wheels[i];
+            float target = 1f;
+            if (w.Tire.State == TireState.Popped) target = Settings.PoppedGrip.Value;
+            else if (w.Tire.State == TireState.Ruptured) target = Settings.RupturedGrip.Value;
+            else if (soft)
+            {
+                float raw = ws.grounded ? Pressure.LateralShare(ws.slipAngle, ws.peakSlipAngle, ws.slipRatio, ws.peakSlipRatio) : 0.5f;
+                w.Share += (raw - w.Share) * Math.Min(1f, Time.fixedDeltaTime * 8f);
+                w.Loose = ws.grounded ? IsLoose(ws) : w.Loose;
+                target = Pressure.WheelGrip(psi, pr, w.Loose, w.Share);
+            }
+            if (Math.Abs(target - w.Grip) < 0.003f && (target != 1f || w.Grip == 1f)) return;
+            try
+            {
+                v.SetWheelTireFrictionMultiplier(i, target);
+                w.Grip = target;
+            }
+            catch (Exception ex) { Mod.Log.Warning($"Tire grip {w.Label}: {ex.Message}"); }
+        }
+
+        private static bool IsLoose(Il2CppVehiclePhysics.VehicleBase.WheelState ws)
+        {
+            var cfg = ws.groundMaterial?.Config;
+            return cfg != null && Pressure.IsLoose((int)cfg.Label);
         }
 
         private static void Damage(int i, float damage, float speed, string source, TireRules rules)
@@ -192,14 +240,14 @@ namespace TireDamage
             var v = Car.Vehicle;
             var pr = Settings.PressureRules();
             float psi = Settings.Psi();
-            float psiRadius = Pressure.RadiusMul(psi, pr), psiGrip = Pressure.Grip(psi, pr);
+            float psiRadius = Pressure.RadiusMul(psi, pr);
             for (int i = 0; i < Wheels.Count; i++)
             {
                 var w = Wheels[i];
                 // A good tire runs at the set pressure (full pressure = exactly 1, untouched).
-                float radiusMul = psiRadius, grip = psiGrip;
-                if (w.Tire.State == TireState.Popped) { radiusMul = Settings.PoppedRadius.Value; grip = Settings.PoppedGrip.Value; }
-                else if (w.Tire.State == TireState.Ruptured) { radiusMul = Settings.RupturedRadius.Value; grip = Settings.RupturedGrip.Value; }
+                float radiusMul = psiRadius;
+                if (w.Tire.State == TireState.Popped) radiusMul = Settings.PoppedRadius.Value;
+                else if (w.Tire.State == TireState.Ruptured) radiusMul = Settings.RupturedRadius.Value;
                 try
                 {
                     float current = v.GetWheelRadius(i);
@@ -216,11 +264,6 @@ namespace TireDamage
                     {
                         if (Math.Abs(current - want) > 1e-4f) v.SetWheelRadius(i, want);
                         w.SetRadius = radiusMul < 1f ? want : -1f;
-                    }
-                    if (grip != 1f || w.GripSet)
-                    {
-                        v.SetWheelTireFrictionMultiplier(i, grip);
-                        w.GripSet = grip != 1f;
                     }
                 }
                 catch (Exception ex) { Mod.Log.Warning($"Tire effect {w.Label}: {ex.Message}"); }
@@ -240,12 +283,12 @@ namespace TireDamage
                     try
                     {
                         if (w.SetRadius > 0f) v.SetWheelRadius(i, w.BaseRadius);
-                        if (w.GripSet) v.SetWheelTireFrictionMultiplier(i, 1f);
+                        if (w.Grip != 1f) v.SetWheelTireFrictionMultiplier(i, 1f);
                     }
                     catch { /* car is being destroyed */ }
                 }
                 w.SetRadius = -1f;
-                w.GripSet = false;
+                w.Grip = 1f;
             }
             RepairProgress = -1f;
         }

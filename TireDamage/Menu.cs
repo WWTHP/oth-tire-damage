@@ -141,10 +141,21 @@ namespace TireDamage
             Pressure.Bounds(pr, out var minPsi, out var normalPsi, out _);
             Slider(Settings.TirePsi, "Pressure now (PSI)", minPsi, normalPsi, "F0");
             Info(Pressure.Describe(Settings.Psi(), pr));
+            if (Tires.Count > 0)
+            {
+                var grips = new System.Text.StringBuilder("Grip now: ");
+                for (int i = 0; i < Tires.Count; i++)
+                {
+                    float g = Tires.GripAt(i, out bool loose);
+                    grips.Append($"{Tires.Label(i)} x{g:0.00}{(loose ? " (loose)" : "")}   ");
+                }
+                Info(grips.ToString());
+            }
             Slider(Settings.NormalPsi, "Full pressure (PSI)", 20f, 60f, "F0");
             Slider(Settings.MinPsi, "Lowest pressure (PSI)", 1f, 30f, "F0");
             Slider(Settings.SafePsi, "Safe pressure (PSI)", 1f, 60f, "F0");
-            Slider(Settings.LowPsiGrip, "Grip at lowest", 1f, 2f, "P0");
+            Slider(Settings.LowPsiGrip, "Sand/snow/ice traction at lowest", 1f, 2f, "P0");
+            Slider(Settings.LowPsiCornerGrip, "Cornering grip at lowest", 0.3f, 1f, "P0");
             Slider(Settings.LowPsiRadius, "Radius at lowest", 0.7f, 1f, "P0");
             Slider(Settings.LowPsiWearPerKm, "Wear per km at lowest", 0f, 5f, "F2");
             Slider(Settings.LowPsiHitFactor, "Hit damage at lowest", 1f, 4f, "F2");

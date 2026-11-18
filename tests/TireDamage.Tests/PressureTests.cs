@@ -8,6 +8,7 @@ namespace TireDamage.Tests
             MinPsi = 8f,
             SafePsi = 16f,
             GripAtMin = 1.3f,
+            CornerGripAtMin = 0.85f,
             RadiusAtMin = 0.92f,
             WearPerKmAtMin = 0.5f,
             HitFactorAtMin = 1.5f,
@@ -19,6 +20,8 @@ namespace TireDamage.Tests
             var r = Rules();
 
             Assert.Equal(1f, Pressure.Grip(32f, r));
+            Assert.Equal(1f, Pressure.CornerGrip(32f, r));
+            Assert.Equal(1f, Pressure.WheelGrip(32f, r, true, 0.3f));
             Assert.Equal(1f, Pressure.RadiusMul(32f, r));
             Assert.Equal(0f, Pressure.WearPerKm(32f, r));
             Assert.Equal(1f, Pressure.HitFactor(32f, r));
@@ -31,6 +34,7 @@ namespace TireDamage.Tests
             var r = Rules();
 
             Assert.Equal(1.3f, Pressure.Grip(8f, r), 4);
+            Assert.Equal(0.85f, Pressure.CornerGrip(8f, r), 4);
             Assert.Equal(0.92f, Pressure.RadiusMul(8f, r), 4);
             Assert.Equal(0.5f, Pressure.WearPerKm(8f, r), 4);
             Assert.Equal(1.5f, Pressure.HitFactor(8f, r), 4);
@@ -115,14 +119,72 @@ namespace TireDamage.Tests
         {
             var r = Rules();
             r.GripAtMin = float.NaN;
+            r.CornerGripAtMin = 0.05f;
             r.RadiusAtMin = 0.1f;
             r.WearPerKmAtMin = -3f;
             r.HitFactorAtMin = 0.2f;
 
             Assert.Equal(1f, Pressure.Grip(8f, r));
+            Assert.Equal(0.3f, Pressure.CornerGrip(8f, r), 4);
             Assert.Equal(0.5f, Pressure.RadiusMul(8f, r));
             Assert.Equal(0f, Pressure.WearPerKm(8f, r));
             Assert.Equal(1f, Pressure.HitFactor(8f, r));
+        }
+
+        [Fact]
+        public void Grip_BelowOneOrCornerAboveOne_Clamped()
+        {
+            var r = Rules();
+            r.GripAtMin = 0.5f;
+            r.CornerGripAtMin = 1.4f;
+
+            Assert.Equal(1f, Pressure.Grip(8f, r));
+            Assert.Equal(1f, Pressure.CornerGrip(8f, r));
+        }
+
+        [Theory]
+        [InlineData(0x4000, true)]   // Sand
+        [InlineData(0x1000, true)]   // DeepSnow
+        [InlineData(0x2000, true)]   // Ice
+        [InlineData(0x40000, true)]  // ShallowSnow
+        [InlineData(0x2024, true)]   // Grass|Dirt|Ice: any loose flag counts
+        [InlineData(0x4, false)]     // Gravel
+        [InlineData(0x80, false)]    // Rock
+        [InlineData(0x8, false)]     // Mud
+        [InlineData(0, false)]       // None
+        public void IsLoose_SandSnowIceOnly(int label, bool expected)
+        {
+            Assert.Equal(expected, Pressure.IsLoose(label));
+        }
+
+        [Theory]
+        [InlineData(0.1f, 0.2f, 0f, 0.1f, 1f)]      // pure cornering
+        [InlineData(0f, 0.2f, 0.05f, 0.1f, 0f)]     // pure wheelspin / braking
+        [InlineData(0.1f, 0.2f, 0.05f, 0.1f, 0.5f)] // equal share of each peak
+        [InlineData(0.001f, 0.2f, 0.001f, 0.1f, 0.5f)] // hardly slipping: idle
+        [InlineData(0.1f, 0f, 0.05f, 0.1f, 0.5f)]   // unknown peak: idle
+        [InlineData(float.NaN, 0.2f, 0.05f, 0.1f, 0.5f)]
+        public void LateralShare_ComparesSlipsByTheirPeaks(float angle, float peakAngle, float ratio, float peakRatio, float expected)
+        {
+            Assert.Equal(expected, Pressure.LateralShare(angle, peakAngle, ratio, peakRatio), 4);
+        }
+
+        [Fact]
+        public void LateralShare_NegativeSlips_UseMagnitude()
+        {
+            Assert.Equal(1f, Pressure.LateralShare(-0.1f, 0.2f, 0f, 0.1f), 4);
+        }
+
+        [Theory]
+        [InlineData(true, 0f, 1.3f)]    // loose, straight: full traction bonus
+        [InlineData(false, 0f, 1f)]     // hard ground, straight: unchanged
+        [InlineData(true, 1f, 0.85f)]   // cornering: worse anywhere
+        [InlineData(false, 1f, 0.85f)]
+        [InlineData(false, 0.5f, 0.925f)]
+        [InlineData(true, float.NaN, 1.075f)]
+        public void WheelGrip_TractionOnLooseGroundOnly_CorneringWorse(bool loose, float share, float expected)
+        {
+            Assert.Equal(expected, Pressure.WheelGrip(8f, Rules(), loose, share), 4);
         }
 
         [Fact]
@@ -131,7 +193,7 @@ namespace TireDamage.Tests
             var r = Rules();
 
             Assert.StartsWith("Full pressure", Pressure.Describe(32f, r));
-            Assert.Equal("Grip +15%  ·  Speed -4%", Pressure.Describe(20f, r));
+            Assert.Equal("Sand/snow +20%  ·  Corners -10%  ·  Speed -5%", Pressure.Describe(16f, r));
             Assert.EndsWith("TOO LOW: tires wearing", Pressure.Describe(10f, r));
         }
 

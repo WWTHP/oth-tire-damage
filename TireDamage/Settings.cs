@@ -41,6 +41,7 @@ namespace TireDamage
         internal static MelonPreferences_Entry<float> MinPsi;
         internal static MelonPreferences_Entry<float> SafePsi;
         internal static MelonPreferences_Entry<float> LowPsiGrip;
+        internal static MelonPreferences_Entry<float> LowPsiCornerGrip;
         internal static MelonPreferences_Entry<float> LowPsiRadius;
         internal static MelonPreferences_Entry<float> LowPsiWearPerKm;
         internal static MelonPreferences_Entry<float> LowPsiHitFactor;
@@ -95,12 +96,15 @@ namespace TireDamage
                 "Hide a spare wheel cosmetic once it is fitted (back after a service).");
 
             TirePsi = Float("TirePsi", 32f, 1f, 60f, "Tire pressure (PSI)",
-                "Pressure of all tires. Full (NormalPsi) = the game's normal tires; lower = more grip, slower, and below SafePsi the tires wear.");
+                "Pressure of all tires. Full (NormalPsi) = the game's normal tires; lower = more traction on sand/snow/ice, worse cornering, slower, and below SafePsi the tires wear.");
             NormalPsi = Float("NormalPsi", 32f, 20f, 60f, "Full pressure (PSI)", "Full pressure: exactly the game's normal tire behaviour.");
             MinPsi = Float("MinPsi", 8f, 1f, 30f, "Lowest pressure (PSI)", "The lowest pressure you can set.");
             SafePsi = Float("SafePsi", 16f, 1f, 60f, "Safe pressure (PSI)",
                 "Below this, driving wears the tires and hits damage them more (pinch flats).");
-            LowPsiGrip = Float("LowPsiGrip", 1.3f, 1f, 2f, "Grip at lowest pressure", "Tire grip at the lowest pressure (x normal).");
+            LowPsiGrip = Float("LowPsiGrip", 1.3f, 1f, 2f, "Sand/snow/ice traction at lowest pressure",
+                "Traction on sand, snow and ice at the lowest pressure (x normal). Other ground: unchanged.");
+            LowPsiCornerGrip = Float("LowPsiCornerGrip", 0.85f, 0.3f, 1f, "Cornering grip at lowest pressure",
+                "Cornering grip at the lowest pressure, on any ground (x normal): soft sidewalls roll over.");
             LowPsiRadius = Float("LowPsiRadius", 0.92f, 0.7f, 1f, "Radius at lowest pressure",
                 "Wheel radius at the lowest pressure (x normal); smaller = lower top speed.");
             LowPsiWearPerKm = Float("LowPsiWearPerKm", 0.5f, 0f, 5f, "Wear per km at lowest pressure",
@@ -132,6 +136,7 @@ namespace TireDamage
             MinPsi = MinPsi.Value,
             SafePsi = SafePsi.Value,
             GripAtMin = LowPsiGrip.Value,
+            CornerGripAtMin = LowPsiCornerGrip.Value,
             RadiusAtMin = LowPsiRadius.Value,
             WearPerKmAtMin = LowPsiWearPerKm.Value,
             HitFactorAtMin = LowPsiHitFactor.Value,

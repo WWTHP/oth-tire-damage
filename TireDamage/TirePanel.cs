@@ -238,7 +238,10 @@ namespace TireDamage
                 _plus.sizeDelta = new Vector2(44f, 30f);
                 _plus.anchoredPosition = new Vector2(PsiBoxX, PsiY);
                 Text("Label", _plus, font, 22f, Color.white, Vector2.zero, 44f, "+");
-                _psiEffect = Text("PsiEffect", rt, font, 12f, Dim, new Vector2(0f, PsiY - 28f), W, "");
+                _psiEffect = Text("PsiEffect", rt, font, 12f, Dim, new Vector2(0f, PsiY - 28f), W - 32f, "");
+                _psiEffect.enableAutoSizing = true; // traction, cornering, speed and the warning on one line
+                _psiEffect.fontSizeMin = 9f;
+                _psiEffect.fontSizeMax = 12f;
                 _lastPsi = _lastPsiEffect = null;
 
                 _footer = Text("Footer", rt, font, 13f, Dim, new Vector2(0f, -H / 2f + 20f), W, "");
