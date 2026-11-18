@@ -19,7 +19,7 @@ namespace TireDamage
     internal static class TirePanel
     {
         private const string Stage = "panel";
-        private const float W = 560f, H = 420f;
+        private const float W = 480f, H = 350f, TileW = 186f, TileH = 84f, TextW = 136f;
         private static readonly Color Good = new(0.78f, 0.94f, 0.78f, 1f);
         private static readonly Color Worn = new(1f, 0.82f, 0.45f, 1f);
         private static readonly Color Flat = new(1f, 0.38f, 0.32f, 1f);
@@ -118,24 +118,29 @@ namespace TireDamage
                     var img = glass.GetComponent<Image>();
                     if (img != null) { img.sprite = null; img.raycastTarget = false; }
                 }
-                var shade = Panel("Shade", rt, new Color(0.05f, 0.06f, 0.07f, 0.55f));
+                var shade = Panel("Shade", rt, new Color(0.04f, 0.05f, 0.06f, 0.42f));
                 Stretch(shade.rectTransform);
 
-                Text("Title", rt, font, 30f, Color.white, new Vector2(0f, H / 2f - 34f), W, "TIRES").fontStyle = FontStyles.Bold;
-                _status = Text("Status", rt, font, 18f, Worn, new Vector2(0f, H / 2f - 64f), W, "");
+                var title = Text("Title", rt, font, 20f, Color.white, new Vector2(0f, H / 2f - 26f), W, "TIRES");
+                title.characterSpacing = 18f;
+                var rule = Panel("Rule", rt, new Color(1f, 1f, 1f, 0.15f));
+                rule.rectTransform.sizeDelta = new Vector2(W - 64f, 1f);
+                rule.rectTransform.anchoredPosition = new Vector2(0f, H / 2f - 44f);
+                _status = Text("Status", rt, font, 14f, Worn, new Vector2(0f, H / 2f - 60f), W, "");
 
                 // Car body from above, tiles at each wheel.
-                var body = Panel("Body", rt, new Color(1f, 1f, 1f, 0.08f));
-                body.rectTransform.sizeDelta = new Vector2(110f, 220f);
-                body.rectTransform.anchoredPosition = new Vector2(0f, -6f);
-                var nose = Panel("Nose", rt, new Color(1f, 1f, 1f, 0.18f));
-                nose.rectTransform.sizeDelta = new Vector2(70f, 6f);
-                nose.rectTransform.anchoredPosition = new Vector2(0f, 104f);
+                var body = Panel("Body", rt, new Color(1f, 1f, 1f, 0.05f));
+                body.rectTransform.sizeDelta = new Vector2(84f, 176f);
+                body.rectTransform.anchoredPosition = new Vector2(0f, -8f);
+                var nose = Panel("Nose", rt, new Color(1f, 1f, 1f, 0.3f));
+                nose.rectTransform.sizeDelta = new Vector2(56f, 2f);
+                nose.rectTransform.anchoredPosition = new Vector2(0f, 78f);
 
                 Tiles.Clear();
                 for (int i = 0; i < Tires.Count; i++) Tiles.Add(Tile(rt, font, i));
 
-                _footer = Text("Footer", rt, font, 16f, Dim, new Vector2(0f, -H / 2f + 26f), W, "");
+                _footer = Text("Footer", rt, font, 13f, Dim, new Vector2(0f, -H / 2f + 20f), W, "");
+                _footer.characterSpacing = 2f;
                 _lastFooter = _lastStatus = null;
                 _builtFor = Car.Generation;
                 Mod.Log.Msg($"Tire panel built on canvas '{canvas.rootCanvas.name}' ({canvas.rootCanvas.renderMode}, font: {(font != null ? font.name : "TMP default")}, " +
@@ -153,18 +158,18 @@ namespace TireDamage
         {
             var label = Tires.Label(i);
             bool left = label.EndsWith('L');
-            float y = label.StartsWith('F') ? 70f : label.StartsWith('R') ? -82f : -6f;
+            float y = label.StartsWith('F') ? 50f : label.StartsWith('R') ? -66f : -8f;
             var t = new TileUi();
             var go = new GameObject("Tile" + label);
             t.Rect = go.AddComponent<RectTransform>();
             t.Rect.SetParent(parent, false);
             t.Rect.anchorMin = t.Rect.anchorMax = t.Rect.pivot = new Vector2(0.5f, 0.5f);
-            t.Rect.sizeDelta = new Vector2(220f, 112f);
-            t.Rect.anchoredPosition = new Vector2(left ? -150f : 150f, y);
+            t.Rect.sizeDelta = new Vector2(TileW, TileH);
+            t.Rect.anchoredPosition = new Vector2(left ? -136f : 136f, y);
 
-            t.Frame = Panel("Frame", t.Rect, new Color(1f, 1f, 1f, 0.06f));
+            t.Frame = Panel("Frame", t.Rect, new Color(1f, 1f, 1f, 0f));
             Stretch(t.Frame.rectTransform);
-            t.Fill = Panel("Fill", t.Rect, new Color(1f, 1f, 1f, 0.22f));
+            t.Fill = Panel("Fill", t.Rect, new Color(1f, 1f, 1f, 0.14f));
             t.Fill.rectTransform.anchorMin = new Vector2(0f, 0f);
             t.Fill.rectTransform.anchorMax = new Vector2(0f, 1f);
             t.Fill.rectTransform.pivot = new Vector2(0f, 0.5f);
@@ -172,14 +177,22 @@ namespace TireDamage
 
             // The tire itself sits on the car's side of the tile.
             t.Tire = Panel("Tire", t.Rect, Good);
-            t.Tire.rectTransform.sizeDelta = new Vector2(30f, 78f);
-            t.Tire.rectTransform.anchoredPosition = new Vector2(left ? 88f : -88f, 0f);
+            t.Tire.rectTransform.sizeDelta = new Vector2(14f, 60f);
+            t.Tire.rectTransform.anchoredPosition = new Vector2(left ? 78f : -78f, 0f);
 
-            float tx = left ? -18f : 18f;
-            t.Name = Text("Name", t.Rect, font, 16f, Dim, new Vector2(tx, 34f), 170f, Tires.LongName(label).ToUpperInvariant());
-            t.Health = Text("Health", t.Rect, font, 34f, Color.white, new Vector2(tx, 2f), 170f, "");
-            t.Health.fontStyle = FontStyles.Bold;
-            t.Action = Text("Action", t.Rect, font, 15f, Dim, new Vector2(tx, -34f), 170f, "");
+            float tx = left ? -12f : 12f;
+            t.Name = Text("Name", t.Rect, font, 12f, Dim, new Vector2(tx, 27f), TextW, Tires.LongName(label).ToUpperInvariant());
+            t.Name.characterSpacing = 6f;
+            // Auto-size: "RUPTURED" shrinks to fit the tile instead of spilling out of it.
+            t.Health = Text("Health", t.Rect, font, 26f, Color.white, new Vector2(tx, 1f), TextW, "");
+            t.Health.enableAutoSizing = true;
+            t.Health.fontSizeMin = 12f;
+            t.Health.fontSizeMax = 26f;
+            t.Health.overflowMode = TextOverflowModes.Truncate;
+            t.Action = Text("Action", t.Rect, font, 12f, Dim, new Vector2(tx, -27f), TextW, "");
+            t.Action.enableAutoSizing = true;
+            t.Action.fontSizeMin = 9f;
+            t.Action.fontSizeMax = 12f;
             return t;
         }
 
@@ -214,7 +227,7 @@ namespace TireDamage
                 var color = tire.State != TireState.Ok ? Flat : tire.Health < 0.5f ? Worn : Good;
                 ui.Tire.color = color;
                 ui.Health.color = color;
-                ui.Frame.color = new Color(1f, 1f, 1f, hover && plan.Kind != RepairKind.None ? 0.16f : 0.06f);
+                ui.Frame.color = new Color(1f, 1f, 1f, hover && plan.Kind != RepairKind.None ? 0.10f : 0f);
 
                 var health = FieldRepair.Describe(tire.State, tire.Health);
                 if (health != ui.LastHealth) { ui.LastHealth = health; ui.Health.text = health; }
