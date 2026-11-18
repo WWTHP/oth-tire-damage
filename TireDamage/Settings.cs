@@ -12,6 +12,7 @@ namespace TireDamage
         internal static MelonPreferences_Entry<bool> Enabled;
         internal static MelonPreferences_Entry<string> MenuKey;
         internal static MelonPreferences_Entry<string> TireKey;
+        internal static MelonPreferences_Entry<string> TirePadButtons;
 
         internal static MelonPreferences_Entry<float> HitThreshold;
         internal static MelonPreferences_Entry<float> DamageScale;
@@ -48,6 +49,8 @@ namespace TireDamage
                 "Opens the tire menu when the settings hub isn't installed (Unity Input System key name).");
             TireKey = Cat.CreateEntry("TireKey", "F4", "Tire menu key",
                 "Opens the tire repair screen (Unity Input System key name).", oldIdentifier: "RepairKey");
+            TirePadButtons = Cat.CreateEntry("TirePadButtons", "L3+R3", "Tire screen controller buttons",
+                "Controller buttons pressed together to open/close the tire screen, e.g. L3+R3, LB+RB, View. Empty = none.");
 
             HitThreshold = Float("HitThreshold", 4f, 1f, 15f, "Hit threshold (m/s)",
                 "Suspension or body impacts slower than this don't hurt a tire.");

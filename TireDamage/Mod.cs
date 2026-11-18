@@ -14,7 +14,7 @@ namespace TireDamage
     /// </summary>
     public sealed class Mod : MelonMod
     {
-        public const string Version = "0.3.1";
+        public const string Version = "0.4.0";
         internal static MelonLogger.Instance Log;
         private static readonly string[] Categories = { "TireDamage" };
         private int _physicsErrors;
