@@ -23,6 +23,7 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
 | Tool kit | part name contains `pipewrench`/`hiliftjack`: patches a **popped** tire to 50 %, reusable, 6 s |
 | Spare | each part containing `sparewheel` (not `wreath`, max 4): replaces a popped or ruptured tire once, 10 s; the cosmetic is hidden when used |
 | Repair | on the F4 screen, click and hold a tire (car stopped, < 1 m/s): popped → tool kit patch, else a spare; ruptured → a spare |
+| Pressure | one PSI for all tires (`TirePsi`, 8–32): full (32) = the game's tire, untouched. Lower, linear to the minimum: grip up to ×1.3, wheel radius down to ×0.92 (lower top speed). Below `SafePsi` (16): wear up to 0.5 health/km and hit damage up to ×1.5 at the minimum (pinch flats); wear can pop a tire. Set on the F4 screen (−/+ or LB/RB, stopped) or the hub tab; kept across sessions |
 | Service | all tires new, spares back: the game's own repairs (hooks below), or stopping within 25 m of a house (Cabin) or the mechanic (Merchant POI) |
 
 ## Layout
@@ -37,6 +38,7 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
 | `TirePanel.cs` | F4 repair screen in the HUD canvas: cloned tilt-dial blurred glass, HUD font, tire tiles, mouse hold (CrashGuard stage `panel`) |
 | `Menu.cs`, `Toast.cs` | hub tab / F1 window (diagnostics, settings, key capture), IMGUI fallback of the repair screen, on-screen messages |
 | `HubTab.cs` | settings hub snippet (mod-template `snippets/generic/HubTab.cs.txt`) |
+| `Core/Pressure.cs` | pressure → grip, radius, low-pressure wear and hit factor; range sanitising; UI summary |
 | `Core/PadInput.cs` | controller chord parsing (`L3+R3`, aliases A/B/X/Y, LB/RB, LT/RT, View/Start…) and tile navigation by wheel position |
 | `Core/TireModel.cs`, `Core/FieldRepair.cs` | damage model, repair planning, part counting, wheel labels |
 
@@ -57,11 +59,16 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
 3. F5 "Tires" tab → Pop a tire: car leans, pulls, less grip. F4: the repair screen shows it red; stopped, click and hold it: patch (tool kit) or spare (cosmetic disappears).
 4. Rupture a tire with no spare left: its tile says it needs a spare. Change the F4 key in the tab.
 5. Drive to a house / camp: "All tires replaced", spares visible again.
+6. Pressure: F4, −/+ (or LB/RB) to 20 PSI: "Grip +15% · Speed -4%"; corners grip better, top speed
+   a bit lower. Down to 10 PSI: red "TOO LOW", health drops while driving (~0.4/km), eventually pops.
+   Back to 32: car exactly as before. Log: `Tire pressure set to N PSI.` Unverified: whether VPP
+   accepts a friction multiplier above 1.
 
 ## Changelog
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 0.5.0 | 2026-11-18 | Tire pressure: one PSI for all tires on the F4 screen (−/+, controller LB/RB; car stopped) and the hub tab. Full = normal game tires; lower = more grip, slower (smaller rolling radius); below the safe pressure the tires wear while driving and hits hurt more. Grip may now go above ×1. |
 | 0.4.0 | 2026-11-17 | Controller support on the tire screen: L3+R3 (`TirePadButtons`, configurable) opens/closes it, D-pad / left stick selects a tire (highlighted), hold A repairs, B closes. |
 | 0.3.1 | 2026-11-17 | Repair screen sleeker: smaller panel and tiles, thin tire bars, frames only on hover, spaced lighter text; tire state text auto-sizes (RUPTURED no longer spills out of its tile). |
 | 0.3.0 | 2026-11-17 | F4 (`TireKey`, configurable, press-a-key in the tab) opens a dedicated tire repair screen in the HUD style: car from above, a tile per tire with health %, click and hold to patch or fit a spare. The hub tab is diagnostics and settings only. Holding F4 no longer repairs. |

@@ -83,8 +83,12 @@ namespace TireDamage
 
             float metres = Car.Speed * Time.deltaTime;
             var rules = Settings.Rules();
+            float lowWear = metres / 1000f * Pressure.WearPerKm(Settings.Psi(), Settings.PressureRules());
             for (int i = 0; i < Wheels.Count; i++)
+            {
                 if (Wheels[i].Tire.Drive(metres, rules) is TireState s) Announce(i, s, "driving on a flat");
+                if (Wheels[i].Tire.Abrade(lowWear) is TireState w) Announce(i, w, "pressure too low");
+            }
 
             ApplyEffects();
             UpdateRepair();
@@ -127,6 +131,7 @@ namespace TireDamage
             if (damage <= 0f) return;
             var w = Wheels[i];
             if (Time.time < w.NextHit) return;
+            if (w.Tire.State == TireState.Ok) damage *= Pressure.HitFactor(Settings.Psi(), Settings.PressureRules());
             w.NextHit = Time.time + HitCooldown;
             var change = w.Tire.Hit(damage, rules);
             if (Settings.LogHits.Value)
@@ -185,10 +190,14 @@ namespace TireDamage
         private static void ApplyEffects()
         {
             var v = Car.Vehicle;
+            var pr = Settings.PressureRules();
+            float psi = Settings.Psi();
+            float psiRadius = Pressure.RadiusMul(psi, pr), psiGrip = Pressure.Grip(psi, pr);
             for (int i = 0; i < Wheels.Count; i++)
             {
                 var w = Wheels[i];
-                float radiusMul = 1f, grip = 1f;
+                // A good tire runs at the set pressure (full pressure = exactly 1, untouched).
+                float radiusMul = psiRadius, grip = psiGrip;
                 if (w.Tire.State == TireState.Popped) { radiusMul = Settings.PoppedRadius.Value; grip = Settings.PoppedGrip.Value; }
                 else if (w.Tire.State == TireState.Ruptured) { radiusMul = Settings.RupturedRadius.Value; grip = Settings.RupturedGrip.Value; }
                 try
@@ -208,10 +217,10 @@ namespace TireDamage
                         if (Math.Abs(current - want) > 1e-4f) v.SetWheelRadius(i, want);
                         w.SetRadius = radiusMul < 1f ? want : -1f;
                     }
-                    if (grip < 1f || w.GripSet)
+                    if (grip != 1f || w.GripSet)
                     {
                         v.SetWheelTireFrictionMultiplier(i, grip);
-                        w.GripSet = grip < 1f;
+                        w.GripSet = grip != 1f;
                     }
                 }
                 catch (Exception ex) { Mod.Log.Warning($"Tire effect {w.Label}: {ex.Message}"); }

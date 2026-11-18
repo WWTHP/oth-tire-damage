@@ -36,6 +36,15 @@ namespace TireDamage
         internal static MelonPreferences_Entry<int> MaxSpares;
         internal static MelonPreferences_Entry<bool> HideUsedSpares;
 
+        internal static MelonPreferences_Entry<float> TirePsi;
+        internal static MelonPreferences_Entry<float> NormalPsi;
+        internal static MelonPreferences_Entry<float> MinPsi;
+        internal static MelonPreferences_Entry<float> SafePsi;
+        internal static MelonPreferences_Entry<float> LowPsiGrip;
+        internal static MelonPreferences_Entry<float> LowPsiRadius;
+        internal static MelonPreferences_Entry<float> LowPsiWearPerKm;
+        internal static MelonPreferences_Entry<float> LowPsiHitFactor;
+
         internal static MelonPreferences_Entry<float> ServiceRadius;
         internal static MelonPreferences_Entry<bool> ShowToasts;
         internal static MelonPreferences_Entry<bool> LogHits;
@@ -85,6 +94,20 @@ namespace TireDamage
             HideUsedSpares = Cat.CreateEntry("HideUsedSpares", true, "Hide used spares",
                 "Hide a spare wheel cosmetic once it is fitted (back after a service).");
 
+            TirePsi = Float("TirePsi", 32f, 1f, 60f, "Tire pressure (PSI)",
+                "Pressure of all tires. Full (NormalPsi) = the game's normal tires; lower = more grip, slower, and below SafePsi the tires wear.");
+            NormalPsi = Float("NormalPsi", 32f, 20f, 60f, "Full pressure (PSI)", "Full pressure: exactly the game's normal tire behaviour.");
+            MinPsi = Float("MinPsi", 8f, 1f, 30f, "Lowest pressure (PSI)", "The lowest pressure you can set.");
+            SafePsi = Float("SafePsi", 16f, 1f, 60f, "Safe pressure (PSI)",
+                "Below this, driving wears the tires and hits damage them more (pinch flats).");
+            LowPsiGrip = Float("LowPsiGrip", 1.3f, 1f, 2f, "Grip at lowest pressure", "Tire grip at the lowest pressure (x normal).");
+            LowPsiRadius = Float("LowPsiRadius", 0.92f, 0.7f, 1f, "Radius at lowest pressure",
+                "Wheel radius at the lowest pressure (x normal); smaller = lower top speed.");
+            LowPsiWearPerKm = Float("LowPsiWearPerKm", 0.5f, 0f, 5f, "Wear per km at lowest pressure",
+                "Tire health lost per km driven at the lowest pressure (none at the safe pressure).");
+            LowPsiHitFactor = Float("LowPsiHitFactor", 1.5f, 1f, 4f, "Hit damage at lowest pressure",
+                "Hit damage multiplier at the lowest pressure (x1 at the safe pressure).");
+
             ServiceRadius = Float("ServiceRadius", 25f, 0f, 200f, "Service radius (m)",
                 "Stopping this close to a house or the mechanic replaces every tire (0 = only the game's repairs).");
             ShowToasts = Cat.CreateEntry("ShowToasts", true, "On-screen messages", "Show pops, repairs and services on screen.");
@@ -102,6 +125,20 @@ namespace TireDamage
             FlatWearPerKm = FlatWearPerKm.Value,
             PatchHealth = PatchHealth.Value,
         };
+
+        public static PressureRules PressureRules() => new()
+        {
+            NormalPsi = NormalPsi.Value,
+            MinPsi = MinPsi.Value,
+            SafePsi = SafePsi.Value,
+            GripAtMin = LowPsiGrip.Value,
+            RadiusAtMin = LowPsiRadius.Value,
+            WearPerKmAtMin = LowPsiWearPerKm.Value,
+            HitFactorAtMin = LowPsiHitFactor.Value,
+        };
+
+        /// <summary>The current pressure, clamped to the configured range.</summary>
+        public static float Psi() => Pressure.Clamp(TirePsi.Value, PressureRules());
 
         public static void Save() => Cat.SaveToFile(false);
 

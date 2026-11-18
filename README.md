@@ -4,7 +4,8 @@
 damage tires; a tire pops when its health runs out (or ruptures on a huge hit, or after driving on
 it flat). Popped and ruptured tires sit lower and grip less. **F4** (controller: **L3+R3**) opens the tire
 repair screen (HUD style): stopped, click and hold a flat tire (or select it with the D-pad and
-hold A) to fix it. A tool kit cosmetic (pipe wrench or
+hold A) to fix it. The same screen sets the **tire pressure** of all tires: full pressure is the
+game's normal tire; lower gives more grip but less speed, and too low wears the tires. A tool kit cosmetic (pipe wrench or
 hi-lift jack) patches popped tires as often as you like; each mounted spare wheel replaces one
 tire. Houses, the mechanic and camp replace every tire and restock the spares. Diagnostics and
 settings: the settings hub tab "Tires" (F5; or F1 without the hub). All keys are configurable.

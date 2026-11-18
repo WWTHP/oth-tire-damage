@@ -136,6 +136,19 @@ namespace TireDamage
             Toggle(Settings.BodyHits, "Body hits near a wheel count");
             Slider(Settings.BodyHitScale, "Body hit scale", 0f, 3f, "F2");
 
+            Section("Tire pressure");
+            var pr = Settings.PressureRules();
+            Pressure.Bounds(pr, out var minPsi, out var normalPsi, out _);
+            Slider(Settings.TirePsi, "Pressure now (PSI)", minPsi, normalPsi, "F0");
+            Info(Pressure.Describe(Settings.Psi(), pr));
+            Slider(Settings.NormalPsi, "Full pressure (PSI)", 20f, 60f, "F0");
+            Slider(Settings.MinPsi, "Lowest pressure (PSI)", 1f, 30f, "F0");
+            Slider(Settings.SafePsi, "Safe pressure (PSI)", 1f, 60f, "F0");
+            Slider(Settings.LowPsiGrip, "Grip at lowest", 1f, 2f, "P0");
+            Slider(Settings.LowPsiRadius, "Radius at lowest", 0.7f, 1f, "P0");
+            Slider(Settings.LowPsiWearPerKm, "Wear per km at lowest", 0f, 5f, "F2");
+            Slider(Settings.LowPsiHitFactor, "Hit damage at lowest", 1f, 4f, "F2");
+
             Section("Flat tire effect");
             Slider(Settings.PoppedRadius, "Popped radius", 0.5f, 1f, "P0");
             Slider(Settings.PoppedGrip, "Popped grip", 0.05f, 1f, "P0");
