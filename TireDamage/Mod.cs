@@ -13,7 +13,7 @@ namespace TireDamage
     /// </summary>
     public sealed class Mod : MelonMod
     {
-        public const string Version = "0.1.0";
+        public const string Version = "0.2.0";
         internal static MelonLogger.Instance Log;
         private static readonly string[] Categories = { "TireDamage" };
         private int _physicsErrors;
@@ -24,7 +24,7 @@ namespace TireDamage
             Settings.Init();
             CrashGuard.Init();
             HubTab.Register("Tires", Menu.DrawBody, categories: Categories,
-                closed: Menu.SaveIfDirty, reset: Menu.ResetDefaults, owner: "TireDamage " + Version);
+                closed: Menu.SaveIfDirty, reset: Menu.ResetDefaults, order: 10, owner: "TireDamage " + Version);
             Log.Msg($"TireDamage {Version} loaded. Hold {Settings.RepairKey.Value} to repair; " +
                     $"settings in the settings hub (or {Settings.MenuKey.Value} without it).");
         }

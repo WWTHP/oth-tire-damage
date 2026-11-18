@@ -85,16 +85,9 @@ namespace TireDamage
 
             Section("Tires");
             if (!Car.Valid) Info("No car yet.");
-            for (int i = 0; i < Tires.Count; i++)
-            {
-                var t = Tires.TireAt(i);
-                var text = FieldRepair.Describe(t.State, t.Health);
-                var color = t.State == TireState.Ok ? (t.Health < 0.5f ? "#ffd27f" : "#c8f0c8") : "#ff8080";
-                var extra = t.State == TireState.Popped ? $"   carcass {t.Carcass:P0}" : "";
-                Info($"{Tires.LongName(Tires.Label(i)),-12}  <color={color}><b>{text}</b></color>{extra}");
-            }
+            for (int i = 0; i < Tires.Count; i++) TireRow(i);
             Info($"Spare wheels: {Tires.SparesLeft} of {Car.Spares.Count} left   Tool kit: {(Car.HasToolKit ? "yes" : "no")}");
-            Info(Tires.PlanText());
+            Info(Car.Speed > 1f ? "Stop the car to repair." : $"Click and hold a button (or hold {Settings.RepairKey.Value} for the worst tire).");
 
             Section("Test");
             if (Button("Pop a tire")) Tires.TestBreak(TireState.Popped);
@@ -136,6 +129,36 @@ namespace TireDamage
                 if (Button("Re-enable (restart the game)")) CrashGuard.ReEnableAll();
             }
             return _y + Pad;
+        }
+
+        /// <summary>One tire: name, health, and a hold-to-repair button when it is flat.</summary>
+        private static void TireRow(int i)
+        {
+            const float RowTall = 30f, NameW = 120f, HealthW = 150f, ButtonW = 190f;
+            var t = Tires.TireAt(i);
+            float x = Pad + 8f, y = _y + 2f;
+            var color = t.State == TireState.Ok ? (t.Health < 0.5f ? "#ffd27f" : "#c8f0c8") : "#ff8080";
+            GUI.Label(new Rect(x, y, NameW, RowTall), Tires.LongName(Tires.Label(i)));
+            var health = FieldRepair.Describe(t.State, t.Health);
+            if (t.State == TireState.Popped) health += $"  ({t.Carcass:P0} left)";
+            GUI.Label(new Rect(x + NameW, y, HealthW, RowTall), $"<size=16><color={color}><b>{health}</b></color></size>");
+
+            var plan = Tires.PlanFor(i);
+            var bx = x + NameW + HealthW + 8f;
+            if (plan.Kind == RepairKind.None)
+            {
+                if (t.State != TireState.Ok)
+                    GUI.Label(new Rect(bx, y, ButtonW + 60f, RowTall), $"<color=#aaaaaa>{plan.Reason}</color>");
+            }
+            else
+            {
+                var rect = new Rect(bx, y, ButtonW, RowTall - 4f);
+                var caption = plan.Kind == RepairKind.Patch ? "Hold: patch (tool kit)" : "Hold: fit spare";
+                if (GUI.RepeatButton(rect, caption)) Tires.HoldFromMenu(i);
+                if (Tires.RepairingTire == i && Tires.RepairProgress > 0f)
+                    GUI.Box(new Rect(rect.x, rect.yMax - 5f, rect.width * Tires.RepairProgress, 5f), "");
+            }
+            _y += RowTall + 2f;
         }
 
         private static void Section(string title)

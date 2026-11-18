@@ -41,7 +41,7 @@ installed. **F4** (`RepairKey`, hold) repairs.
   the mod only ever scales it. Disabling the mod restores radius and grip.
 - The grip multiplier is assumed to be 1.0 normally (the game's tire tiers use the friction object,
   `SetupTireTier`). Unverified: check grip after a repair in game.
-- Tire state is not saved: a game restart gives new tires.
+- Tire state is not saved, by design: new games start at a camp or the mechanic anyway.
 - Multiplayer: only the local car's wheels change; nothing is sent. Whether VPP applies the radius
   for a client's car is untested.
 
@@ -49,7 +49,7 @@ installed. **F4** (`RepairKey`, hold) repairs.
 
 1. Log: `Local car found … (4 wheels…)`, `Tires: FL r=… …`, `Mounted parts … spare wheel(s), tool kit: …`, `Hooked …` ×5.
 2. Drive hard over rocks/jumps: `Hit FL (suspension) 7.1 m/s → -0.39 = 61%` lines. Tune `HitThreshold`/`DamageScale` from them.
-3. Tab "Tires" → Pop a tire: car leans, pulls, less grip. Hold F4 stopped: patch (tool kit) or spare (cosmetic disappears).
+3. F5 opens on "Tires" → Pop a tire: car leans, pulls, less grip. Stopped, click and hold its button (or F4): patch (tool kit) or spare (cosmetic disappears).
 4. Rupture a tire with no spare left: F4 says it needs a spare.
 5. Drive to a house / camp: "All tires replaced", spares visible again.
 
@@ -57,4 +57,5 @@ installed. **F4** (`RepairKey`, hold) repairs.
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 0.2.0 | 2026-11-17 | Tires tab is the hub's first tab (F5): each tire's health in %, click and hold a tire's button to patch it (popped, tool kit) or fit a spare (ruptured, or popped without a tool kit). F4 still repairs the worst tire. Tire state is deliberately not saved (new games start at a camp or the mechanic). |
 | 0.1.0 | 2026-11-17 | First version: hits, pop/rupture, flat effect, tool kit + spare repairs, service at house/mechanic/camp, settings hub tab. |

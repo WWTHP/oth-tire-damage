@@ -30,6 +30,9 @@ namespace TireDamage
         private static readonly List<Renderer> HiddenRenderers = new();
         private static float _repairProgress;
         private static RepairPlan _plan;
+        private static int _menuTire = -1, _activeTire = -1;
+        private static float _menuHeldUntil;
+        private static RepairKind _activeKind;
         private static bool _wasEnabled = true;
 
         public static int Count => Wheels.Count;
@@ -40,6 +43,19 @@ namespace TireDamage
         public static float RepairProgress { get; private set; } = -1f;
 
         public static string RepairText { get; private set; }
+
+        /// <summary>The tire being repaired right now (-1 if none).</summary>
+        public static int RepairingTire => RepairProgress >= 0f ? _activeTire : -1;
+
+        /// <summary>The menu's hold button for tire <paramref name="i"/> is held this frame.</summary>
+        public static void HoldFromMenu(int i)
+        {
+            _menuTire = i;
+            _menuHeldUntil = Time.unscaledTime + 0.15f;
+        }
+
+        /// <summary>What holding tire <paramref name="i"/>'s button would do.</summary>
+        public static RepairPlan PlanFor(int i) => FieldRepair.PlanFor(TireList(), i, Car.HasToolKit, SparesLeft);
 
         public static string Label(int i) => Wheels[i].Label;
         public static Tire TireAt(int i) => Wheels[i].Tire;
@@ -231,26 +247,39 @@ namespace TireDamage
         private static void UpdateRepair()
         {
             _plan = FieldRepair.Plan(TireList(), Car.HasToolKit, SparesLeft);
-            if (!Settings.Held(Settings.RepairKey))
+            RepairPlan active;
+            if (_menuTire >= 0 && Time.unscaledTime <= _menuHeldUntil) active = PlanFor(_menuTire);
+            else if (Settings.Held(Settings.RepairKey)) active = _plan;
+            else
             {
-                RepairProgress = -1f;
-                _repairProgress = 0f;
-                RepairText = null;
+                _menuTire = -1;
+                StopRepair(null);
                 return;
             }
-            if (_plan.Kind == RepairKind.None) { RepairProgress = 0f; RepairText = _plan.Reason; return; }
-            if (Car.Speed > MaxRepairSpeed) { RepairProgress = 0f; _repairProgress = 0f; RepairText = "Stop the car to repair."; return; }
+            if (active.Kind == RepairKind.None) { StopRepair(active.Reason); RepairProgress = 0f; return; }
+            if (Car.Speed > MaxRepairSpeed) { StopRepair("Stop the car to repair."); RepairProgress = 0f; return; }
+            if (active.Tire != _activeTire || active.Kind != _activeKind) _repairProgress = 0f; // switched target
+            _activeTire = active.Tire;
+            _activeKind = active.Kind;
 
-            float need = _plan.Kind == RepairKind.Patch ? Settings.PatchSeconds.Value : Settings.SpareSeconds.Value;
+            float need = active.Kind == RepairKind.Patch ? Settings.PatchSeconds.Value : Settings.SpareSeconds.Value;
             _repairProgress += Time.deltaTime;
             RepairProgress = Mathf.Clamp01(_repairProgress / Mathf.Max(0.1f, need));
-            var name = LongName(Wheels[_plan.Tire].Label);
-            RepairText = _plan.Kind == RepairKind.Patch ? $"Patching {name} tire…" : $"Fitting a spare to {name}…";
+            var name = LongName(Wheels[active.Tire].Label);
+            RepairText = active.Kind == RepairKind.Patch ? $"Patching {name} tire…" : $"Fitting a spare to {name}…";
             if (RepairProgress < 1f) return;
 
-            DoRepair(_plan);
+            DoRepair(active);
+            StopRepair(null);
+        }
+
+        private static void StopRepair(string text)
+        {
             _repairProgress = 0f;
             RepairProgress = -1f;
+            _activeTire = -1;
+            _activeKind = RepairKind.None;
+            RepairText = text;
         }
 
         private static void DoRepair(RepairPlan plan)
@@ -282,13 +311,6 @@ namespace TireDamage
             Mod.Log.Msg($"Service ({where}): all tires replaced, spares restocked.");
             Toast.Show("All tires replaced.");
         }
-
-        public static string PlanText() => _plan == null ? "" : _plan.Kind switch
-        {
-            RepairKind.Patch => $"{Settings.RepairKey.Value}: patch {LongName(Wheels[_plan.Tire].Label)} with the tool kit",
-            RepairKind.Spare => $"{Settings.RepairKey.Value}: fit a spare to {LongName(Wheels[_plan.Tire].Label)}",
-            _ => _plan.Reason,
-        };
 
         /// <summary>Test helper from the menu: pops (or ruptures) a random good tire.</summary>
         public static void TestBreak(TireState state)

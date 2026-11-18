@@ -91,6 +91,60 @@ namespace TireDamage.Tests
         }
 
         [Fact]
+        public void PlanFor_PoppedWithToolKit_Patches()
+        {
+            var plan = FieldRepair.PlanFor(Tires(TireState.Ok, TireState.Popped), 1, true, 1);
+
+            Assert.Equal(RepairKind.Patch, plan.Kind);
+            Assert.Equal(1, plan.Tire);
+        }
+
+        [Fact]
+        public void PlanFor_PoppedWithoutToolKit_FitsSpare()
+        {
+            Assert.Equal(RepairKind.Spare, FieldRepair.PlanFor(Tires(TireState.Popped), 0, false, 1).Kind);
+        }
+
+        [Fact]
+        public void PlanFor_PoppedNothingAvailable_Explains()
+        {
+            var plan = FieldRepair.PlanFor(Tires(TireState.Popped), 0, false, 0);
+
+            Assert.Equal(RepairKind.None, plan.Kind);
+            Assert.Contains("tool kit", plan.Reason);
+        }
+
+        [Fact]
+        public void PlanFor_RupturedWithSpare_FitsSpareEvenWithToolKit()
+        {
+            Assert.Equal(RepairKind.Spare, FieldRepair.PlanFor(Tires(TireState.Ruptured), 0, true, 1).Kind);
+        }
+
+        [Fact]
+        public void PlanFor_RupturedNoSpare_Explains()
+        {
+            var plan = FieldRepair.PlanFor(Tires(TireState.Ruptured), 0, true, 0);
+
+            Assert.Equal(RepairKind.None, plan.Kind);
+            Assert.Contains("spare", plan.Reason);
+        }
+
+        [Fact]
+        public void PlanFor_HealthyTire_Nothing()
+        {
+            Assert.Equal(RepairKind.None, FieldRepair.PlanFor(Tires(TireState.Ok), 0, true, 1).Kind);
+        }
+
+        [Theory]
+        [InlineData(-1)]
+        [InlineData(2)]
+        public void PlanFor_BadIndex_Nothing(int index)
+        {
+            Assert.Equal(RepairKind.None, FieldRepair.PlanFor(Tires(TireState.Popped, TireState.Popped), index, true, 1).Kind);
+            Assert.Equal(RepairKind.None, FieldRepair.PlanFor(null, 0, true, 1).Kind);
+        }
+
+        [Fact]
         public void CountParts_SparesExcludingDecorations()
         {
             Assert.Equal(2, FieldRepair.CountParts(MountedParts, SparesWords, Wreath));

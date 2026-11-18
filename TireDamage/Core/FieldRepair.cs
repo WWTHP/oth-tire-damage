@@ -51,6 +51,28 @@ namespace TireDamage
                 : "Popped tire: needs a tool kit (pipe wrench or hi-lift jack) or a spare wheel.");
         }
 
+        /// <summary>
+        /// Repair for one chosen tire (menu): popped → tool kit patch, else a spare; ruptured → a spare.
+        /// </summary>
+        public static RepairPlan PlanFor(IReadOnlyList<Tire> tires, int index, bool hasToolKit, int sparesLeft)
+        {
+            if (tires == null || index < 0 || index >= tires.Count) return new RepairPlan(-1, RepairKind.None, "No such tire.");
+            switch (tires[index].State)
+            {
+                case TireState.Popped:
+                    if (hasToolKit) return new RepairPlan(index, RepairKind.Patch, null);
+                    return sparesLeft > 0
+                        ? new RepairPlan(index, RepairKind.Spare, null)
+                        : new RepairPlan(-1, RepairKind.None, "needs a tool kit or a spare");
+                case TireState.Ruptured:
+                    return sparesLeft > 0
+                        ? new RepairPlan(index, RepairKind.Spare, null)
+                        : new RepairPlan(-1, RepairKind.None, "needs a spare wheel");
+                default:
+                    return new RepairPlan(-1, RepairKind.None, "OK");
+            }
+        }
+
         /// <summary>Counts parts whose name contains any keyword and no excluded word (case-insensitive).</summary>
         public static int CountParts(IEnumerable<string> partNames, IReadOnlyList<string> keywords, IReadOnlyList<string> exclude)
         {
