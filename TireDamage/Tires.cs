@@ -29,7 +29,6 @@ namespace TireDamage
         private static int _sparesUsed;
         private static readonly List<Renderer> HiddenRenderers = new();
         private static float _repairProgress;
-        private static RepairPlan _plan;
         private static int _menuTire = -1, _activeTire = -1;
         private static float _menuHeldUntil;
         private static RepairKind _activeKind;
@@ -246,10 +245,8 @@ namespace TireDamage
 
         private static void UpdateRepair()
         {
-            _plan = FieldRepair.Plan(TireList(), Car.HasToolKit, SparesLeft);
             RepairPlan active;
             if (_menuTire >= 0 && Time.unscaledTime <= _menuHeldUntil) active = PlanFor(_menuTire);
-            else if (Settings.Held(Settings.RepairKey)) active = _plan;
             else
             {
                 _menuTire = -1;

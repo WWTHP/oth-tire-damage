@@ -3,8 +3,7 @@ using UnityEngine;
 namespace TireDamage
 {
     /// <summary>
-    /// On-screen text (IMGUI): the latest message for a few seconds, and the repair progress bar
-    /// while the repair key is held.
+    /// On-screen text (IMGUI): the latest message (pops, repairs, services) for a few seconds.
     /// </summary>
     internal static class Toast
     {
@@ -27,17 +26,6 @@ namespace TireDamage
             const float BoxW = 420f;
             float x = (w - BoxW) / 2f, y = h * 0.72f;
 
-            if (Tires.RepairText != null)
-            {
-                GUI.Box(new Rect(x, y, BoxW, 54f), "");
-                GUI.Label(new Rect(x + 12f, y + 4f, BoxW - 24f, 24f), $"<b>{Tires.RepairText}</b>");
-                if (Tires.RepairProgress > 0f)
-                {
-                    GUI.Box(new Rect(x + 12f, y + 30f, BoxW - 24f, 14f), "");
-                    GUI.Box(new Rect(x + 12f, y + 30f, (BoxW - 24f) * Tires.RepairProgress, 14f), "");
-                }
-                y -= 40f;
-            }
             if (_text != null && Time.unscaledTime < _until)
             {
                 GUI.Box(new Rect(x, y, BoxW, 32f), "");

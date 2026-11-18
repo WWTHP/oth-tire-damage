@@ -1,11 +1,15 @@
+using System;
 using MelonLoader;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace TireDamage
 {
     /// <summary>
-    /// The tire menu. <see cref="DrawBody"/> is the settings hub tab (registered in Mod); without the
-    /// hub, MenuKey opens the same body in a window of its own. Changes save on close / tab leave.
+    /// Diagnostics and settings. <see cref="DrawBody"/> is the settings hub tab (registered in Mod);
+    /// without the hub, MenuKey opens the same body in a window of its own. Changes save on close /
+    /// tab leave. Repairs are done on the tire screen (<see cref="TirePanel"/>);
+    /// <see cref="DrawFallbackPanel"/> stands in for it if it can't be built in the HUD.
     /// </summary>
     internal static class Menu
     {
@@ -17,9 +21,12 @@ namespace TireDamage
         private static bool _dirty;
         private static CursorLockMode _prevLock;
         private static bool _prevVisible;
+        private static MelonPreferences_Entry<string> _capturing;
 
-        public static void Update()
+        /// <summary>Returns true when a key press was taken by key capture this frame.</summary>
+        public static bool Update()
         {
+            if (Capture()) return true;
             if (!HubTab.HubPresent && Settings.Pressed(Settings.MenuKey)) Toggle();
             if (IsOpen && HubTab.HubPresent) Toggle(); // the hub took over
             if (IsOpen)
@@ -27,6 +34,30 @@ namespace TireDamage
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
             }
+            return false;
+        }
+
+        /// <summary>Waiting for a key for <see cref="_capturing"/>: the next key pressed is stored; Escape cancels.</summary>
+        private static bool Capture()
+        {
+            if (_capturing == null) return false;
+            var kb = Keyboard.current;
+            if (kb == null) return false;
+            if (kb[Key.Escape].wasPressedThisFrame) { _capturing = null; return true; }
+            foreach (Key k in Enum.GetValues<Key>())
+            {
+                if (k == Key.None || k == Key.Escape) continue;
+                bool down;
+                try { down = kb[k].wasPressedThisFrame; }
+                catch { continue; } // enum values without a control
+                if (!down) continue;
+                _capturing.Value = k.ToString();
+                Mod.Log.Msg($"{_capturing.Identifier} = {_capturing.Value}");
+                _capturing = null;
+                _dirty = true;
+                return true;
+            }
+            return false;
         }
 
         private static void Toggle()
@@ -85,9 +116,10 @@ namespace TireDamage
 
             Section("Tires");
             if (!Car.Valid) Info("No car yet.");
-            for (int i = 0; i < Tires.Count; i++) TireRow(i);
+            for (int i = 0; i < Tires.Count; i++) TireRow(i, false);
             Info($"Spare wheels: {Tires.SparesLeft} of {Car.Spares.Count} left   Tool kit: {(Car.HasToolKit ? "yes" : "no")}");
-            Info(Car.Speed > 1f ? "Stop the car to repair." : $"Click and hold a button (or hold {Settings.RepairKey.Value} for the worst tire).");
+            KeyRow(Settings.TireKey, "Tire repair screen key");
+            if (!HubTab.HubPresent) KeyRow(Settings.MenuKey, "Settings menu key");
 
             Section("Test");
             if (Button("Pop a tire")) Tires.TestBreak(TireState.Popped);
@@ -117,8 +149,6 @@ namespace TireDamage
             Toggle(Settings.HideUsedSpares, "Hide used spare wheels");
             Info($"Spares: parts named '{Settings.SpareKeywords.Value}' (not '{Settings.SpareExclude.Value}'); " +
                  $"tool kit: '{Settings.ToolKeywords.Value}'. Edit in MelonPreferences.cfg.");
-            Info($"Keys: hold {Settings.RepairKey.Value} to repair" +
-                 (HubTab.HubPresent ? "" : $", {Settings.MenuKey.Value} menu") + ".");
 
             Section("Other");
             Toggle(Settings.ShowToasts, "On-screen messages");
@@ -131,8 +161,41 @@ namespace TireDamage
             return _y + Pad;
         }
 
-        /// <summary>One tire: name, health, and a hold-to-repair button when it is flat.</summary>
-        private static void TireRow(int i)
+        /// <summary>A key setting with a "press a key" button.</summary>
+        private static void KeyRow(MelonPreferences_Entry<string> e, string label)
+        {
+            GUI.Label(new Rect(Pad + 8f, _y, LabelW, RowH), label);
+            bool waiting = ReferenceEquals(_capturing, e);
+            if (GUI.Button(new Rect(Pad + 8f + LabelW, _y + 2f, 220f, RowH - 4f), waiting ? "Press a key… (Esc = cancel)" : e.Value))
+                _capturing = waiting ? null : e;
+            _y += RowH;
+        }
+
+        /// <summary>IMGUI stand-in for the tire screen (only if the HUD panel couldn't be built).</summary>
+        public static void DrawFallbackPanel()
+        {
+            float scale = Mathf.Max(1f, Screen.height / 1080f);
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1f));
+            float h = 90f + Tires.Count * 32f;
+            var win = new Rect((Screen.width / scale - W) / 2f, (Screen.height / scale - h) / 2f, W, h);
+            GUI.Box(win, "");
+            GUI.Box(win, "");
+            GUI.Label(new Rect(win.x + Pad, win.y + 8f, W, RowH), $"<b>TIRES</b>   ({Settings.TireKey.Value} to close)");
+            _width = W;
+            _y = 0f;
+            GUI.BeginGroup(new Rect(win.x, win.y + 36f, W, h - 36f));
+            try
+            {
+                for (int i = 0; i < Tires.Count; i++) TireRow(i, true);
+                Info(Car.Speed > 1f ? "Stop the car to work on the tires." :
+                    $"Spares {Tires.SparesLeft}/{Car.Spares.Count}   Tool kit {(Car.HasToolKit ? "yes" : "no")}");
+            }
+            finally { GUI.EndGroup(); }
+            GUI.matrix = Matrix4x4.identity;
+        }
+
+        /// <summary>One tire: name, health, and (repair screen fallback) a hold-to-repair button.</summary>
+        private static void TireRow(int i, bool buttons)
         {
             const float RowTall = 30f, NameW = 120f, HealthW = 150f, ButtonW = 190f;
             var t = Tires.TireAt(i);
@@ -145,18 +208,21 @@ namespace TireDamage
 
             var plan = Tires.PlanFor(i);
             var bx = x + NameW + HealthW + 8f;
-            if (plan.Kind == RepairKind.None)
+            if (buttons)
             {
-                if (t.State != TireState.Ok)
-                    GUI.Label(new Rect(bx, y, ButtonW + 60f, RowTall), $"<color=#aaaaaa>{plan.Reason}</color>");
-            }
-            else
-            {
-                var rect = new Rect(bx, y, ButtonW, RowTall - 4f);
-                var caption = plan.Kind == RepairKind.Patch ? "Hold: patch (tool kit)" : "Hold: fit spare";
-                if (GUI.RepeatButton(rect, caption)) Tires.HoldFromMenu(i);
-                if (Tires.RepairingTire == i && Tires.RepairProgress > 0f)
-                    GUI.Box(new Rect(rect.x, rect.yMax - 5f, rect.width * Tires.RepairProgress, 5f), "");
+                if (plan.Kind == RepairKind.None)
+                {
+                    if (t.State != TireState.Ok)
+                        GUI.Label(new Rect(bx, y, ButtonW + 60f, RowTall), $"<color=#aaaaaa>{plan.Reason}</color>");
+                }
+                else
+                {
+                    var rect = new Rect(bx, y, ButtonW, RowTall - 4f);
+                    var caption = plan.Kind == RepairKind.Patch ? "Hold: patch (tool kit)" : "Hold: fit spare";
+                    if (GUI.RepeatButton(rect, caption)) Tires.HoldFromMenu(i);
+                    if (Tires.RepairingTire == i && Tires.RepairProgress > 0f)
+                        GUI.Box(new Rect(rect.x, rect.yMax - 5f, rect.width * Tires.RepairProgress, 5f), "");
+                }
             }
             _y += RowTall + 2f;
         }

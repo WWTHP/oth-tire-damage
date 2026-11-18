@@ -32,6 +32,10 @@
     <Reference Include="Il2CppFusion.Runtime"><HintPath>$(InteropDir)/Il2CppFusion.Runtime.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Il2CppFusion.Common"><HintPath>$(InteropDir)/Il2CppFusion.Common.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Il2CppFunselektor.FunCore.Runtime"><HintPath>$(InteropDir)/Il2CppFunselektor.FunCore.Runtime.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UI"><HintPath>$(InteropDir)/UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UIModule"><HintPath>$(InteropDir)/UnityEngine.UIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.TextMeshPro"><HintPath>$(InteropDir)/Unity.TextMeshPro.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(InteropDir)/UnityEngine.TextRenderingModule.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Unity.InputSystem"><HintPath>$(InteropDir)/Unity.InputSystem.dll</HintPath><Private>false</Private></Reference>
     <!-- Add only what you use, e.g. UnityEngine.PhysicsModule, UnityEngine.ParticleSystemModule,
          Il2CppFMOD / Il2CppFMODUnity (audio), Il2CppFusion.Runtime/.Common/.Sockets (multiplayer). -->

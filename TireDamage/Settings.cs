@@ -11,7 +11,7 @@ namespace TireDamage
         internal static MelonPreferences_Category Cat;
         internal static MelonPreferences_Entry<bool> Enabled;
         internal static MelonPreferences_Entry<string> MenuKey;
-        internal static MelonPreferences_Entry<string> RepairKey;
+        internal static MelonPreferences_Entry<string> TireKey;
 
         internal static MelonPreferences_Entry<float> HitThreshold;
         internal static MelonPreferences_Entry<float> DamageScale;
@@ -46,8 +46,8 @@ namespace TireDamage
             // Registry: docs/games/over-the-hill/README.md (F2/F3 OTHNight, F5 hub, F6-F11 our mods).
             MenuKey = Cat.CreateEntry("MenuKey", "F1", "Menu key",
                 "Opens the tire menu when the settings hub isn't installed (Unity Input System key name).");
-            RepairKey = Cat.CreateEntry("RepairKey", "F4", "Repair key",
-                "Hold while stopped to patch or change the worst flat tire (Unity Input System key name).");
+            TireKey = Cat.CreateEntry("TireKey", "F4", "Tire menu key",
+                "Opens the tire repair screen (Unity Input System key name).", oldIdentifier: "RepairKey");
 
             HitThreshold = Float("HitThreshold", 4f, 1f, 15f, "Hit threshold (m/s)",
                 "Suspension or body impacts slower than this don't hurt a tire.");
@@ -108,8 +108,6 @@ namespace TireDamage
         }
 
         public static bool Pressed(MelonPreferences_Entry<string> entry) => TryKey(entry, out var k) && k.wasPressedThisFrame;
-
-        public static bool Held(MelonPreferences_Entry<string> entry) => TryKey(entry, out var k) && k.isPressed;
 
         private static bool TryKey(MelonPreferences_Entry<string> entry, out UnityEngine.InputSystem.Controls.KeyControl control)
         {

@@ -9,11 +9,12 @@ namespace TireDamage
     /// Tires take damage from hard hits, pop, and rupture if you keep driving on them. A popped
     /// tire can be patched with a tool kit cosmetic (pipe wrench / hi-lift jack, reusable); a spare
     /// wheel cosmetic replaces any flat once. Houses, the mechanic and camp replace every tire.
-    /// Hold RepairKey (F4) while stopped to repair. Settings: the settings hub tab, or MenuKey.
+    /// TireKey (F4) opens the repair screen (<see cref="TirePanel"/>). Diagnostics and settings: the
+    /// settings hub tab, or MenuKey without the hub.
     /// </summary>
     public sealed class Mod : MelonMod
     {
-        public const string Version = "0.2.0";
+        public const string Version = "0.3.0";
         internal static MelonLogger.Instance Log;
         private static readonly string[] Categories = { "TireDamage" };
         private int _physicsErrors;
@@ -25,14 +26,16 @@ namespace TireDamage
             CrashGuard.Init();
             HubTab.Register("Tires", Menu.DrawBody, categories: Categories,
                 closed: Menu.SaveIfDirty, reset: Menu.ResetDefaults, order: 10, owner: "TireDamage " + Version);
-            Log.Msg($"TireDamage {Version} loaded. Hold {Settings.RepairKey.Value} to repair; " +
+            Log.Msg($"TireDamage {Version} loaded. {Settings.TireKey.Value} = tire repair screen; " +
                     $"settings in the settings hub (or {Settings.MenuKey.Value} without it).");
         }
 
         public override void OnUpdate()
         {
-            Menu.Update();
+            bool keyTaken = Menu.Update();
             Car.Update();
+            if (Settings.Enabled.Value && !keyTaken) TirePanel.Update();
+            else if (TirePanel.IsOpen && !Settings.Enabled.Value) TirePanel.Toggle();
             Tires.Update();
             if (Settings.Enabled.Value) Service.Update(HarmonyInstance);
         }
@@ -50,7 +53,10 @@ namespace TireDamage
         public override void OnGUI()
         {
             Menu.Draw();
-            if (Settings.Enabled.Value) Toast.Draw();
+            if (!Settings.Enabled.Value) return;
+            TirePanel.TrackMouse();
+            if (TirePanel.IsOpen && TirePanel.UseFallback) Menu.DrawFallbackPanel();
+            Toast.Draw();
         }
     }
 }

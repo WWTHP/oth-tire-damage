@@ -29,28 +29,10 @@ namespace TireDamage
 
     /// <summary>
     /// Field repairs: the tool kit (reusable) patches a popped tire; a spare wheel (one use each until
-    /// the next service) replaces a popped or ruptured one. Ruptured tires come first, then popped.
-    /// A popped tire is patched when a tool kit is mounted, so spares are kept for ruptures.
+    /// the next service) replaces a ruptured one, or a popped one when there's no tool kit.
     /// </summary>
     internal static class FieldRepair
     {
-        public static RepairPlan Plan(IReadOnlyList<Tire> tires, bool hasToolKit, int sparesLeft)
-        {
-            int ruptured = -1, popped = -1;
-            for (int i = 0; i < tires.Count; i++)
-            {
-                if (tires[i].State == TireState.Ruptured && ruptured < 0) ruptured = i;
-                if (tires[i].State == TireState.Popped && popped < 0) popped = i;
-            }
-            if (ruptured < 0 && popped < 0) return new RepairPlan(-1, RepairKind.None, "No flat tires.");
-            if (ruptured >= 0 && sparesLeft > 0) return new RepairPlan(ruptured, RepairKind.Spare, null);
-            if (popped >= 0 && hasToolKit) return new RepairPlan(popped, RepairKind.Patch, null);
-            if (popped >= 0 && sparesLeft > 0) return new RepairPlan(popped, RepairKind.Spare, null);
-            return new RepairPlan(-1, RepairKind.None, ruptured >= 0
-                ? "Ruptured tire: needs a spare wheel (none left)."
-                : "Popped tire: needs a tool kit (pipe wrench or hi-lift jack) or a spare wheel.");
-        }
-
         /// <summary>
         /// Repair for one chosen tire (menu): popped → tool kit patch, else a spare; ruptured → a spare.
         /// </summary>
