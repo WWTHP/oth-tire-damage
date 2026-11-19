@@ -21,7 +21,7 @@ namespace TireDamage
     internal static class TirePanel
     {
         private const string Stage = "panel";
-        private const float W = 480f, H = 350f, TileW = 186f, TileH = 84f, TextW = 136f;
+        private const float W = 480f, H = 430f, PsiY = -125f, PsiBoxX = 92f, TileW = 186f, TileH = 84f, TextW = 136f;
         private static readonly Color Good = new(0.78f, 0.94f, 0.78f, 1f);
         private static readonly Color Worn = new(1f, 0.82f, 0.45f, 1f);
         private static readonly Color Flat = new(1f, 0.38f, 0.32f, 1f);
@@ -42,7 +42,12 @@ namespace TireDamage
 
         private static GameObject _root;
         private static readonly System.Collections.Generic.List<TileUi> Tiles = new();
-        private static TextMeshProUGUI _footer, _status;
+        private static TextMeshProUGUI _footer, _status, _psi, _psiEffect;
+        private static RectTransform _minus, _plus;
+        private static Image _minusImg, _plusImg;
+        private static string _lastPsi, _lastPsiEffect;
+        private static float _psiRepeatAt;
+        private static bool _psiDirty;
         private static string _lastFooter, _lastStatus;
         private static int _builtFor = -1;
         private static bool _failed;
@@ -82,6 +87,12 @@ namespace TireDamage
                 return;
             }
             if (_root != null && !_root.WasCollected) _root.SetActive(false);
+            if (_psiDirty)
+            {
+                Settings.Save();
+                _psiDirty = false;
+                Mod.Log.Msg($"Tire pressure set to {Settings.Psi():0} PSI.");
+            }
             Cursor.lockState = _prevLock;
             Cursor.visible = _prevVisible;
         }
@@ -205,13 +216,33 @@ namespace TireDamage
                 // Car body from above, tiles at each wheel.
                 var body = Panel("Body", rt, new Color(1f, 1f, 1f, 0.05f));
                 body.rectTransform.sizeDelta = new Vector2(84f, 176f);
-                body.rectTransform.anchoredPosition = new Vector2(0f, -8f);
+                body.rectTransform.anchoredPosition = new Vector2(0f, 32f);
                 var nose = Panel("Nose", rt, new Color(1f, 1f, 1f, 0.3f));
                 nose.rectTransform.sizeDelta = new Vector2(56f, 2f);
-                nose.rectTransform.anchoredPosition = new Vector2(0f, 78f);
+                nose.rectTransform.anchoredPosition = new Vector2(0f, 118f);
 
                 Tiles.Clear();
                 for (int i = 0; i < Tires.Count; i++) Tiles.Add(Tile(rt, font, i));
+
+                // Pressure: − [24 PSI] +, effect summary below.
+                var cap = Text("PsiCaption", rt, font, 12f, Dim, new Vector2(0f, PsiY + 30f), W, "TIRE PRESSURE");
+                cap.characterSpacing = 6f;
+                _psi = Text("Psi", rt, font, 24f, Color.white, new Vector2(0f, PsiY), 140f, "");
+                _minusImg = Panel("PsiMinus", rt, new Color(1f, 1f, 1f, 0.08f));
+                _minus = _minusImg.rectTransform;
+                _minus.sizeDelta = new Vector2(44f, 30f);
+                _minus.anchoredPosition = new Vector2(-PsiBoxX, PsiY);
+                Text("Label", _minus, font, 22f, Color.white, Vector2.zero, 44f, "−");
+                _plusImg = Panel("PsiPlus", rt, new Color(1f, 1f, 1f, 0.08f));
+                _plus = _plusImg.rectTransform;
+                _plus.sizeDelta = new Vector2(44f, 30f);
+                _plus.anchoredPosition = new Vector2(PsiBoxX, PsiY);
+                Text("Label", _plus, font, 22f, Color.white, Vector2.zero, 44f, "+");
+                _psiEffect = Text("PsiEffect", rt, font, 12f, Dim, new Vector2(0f, PsiY - 28f), W - 32f, "");
+                _psiEffect.enableAutoSizing = true; // traction, cornering, speed and the warning on one line
+                _psiEffect.fontSizeMin = 9f;
+                _psiEffect.fontSizeMax = 12f;
+                _lastPsi = _lastPsiEffect = null;
 
                 _footer = Text("Footer", rt, font, 13f, Dim, new Vector2(0f, -H / 2f + 20f), W, "");
                 _footer.characterSpacing = 2f;
@@ -232,7 +263,7 @@ namespace TireDamage
         {
             var label = Tires.Label(i);
             bool left = label.EndsWith('L');
-            float y = label.StartsWith('F') ? 50f : label.StartsWith('R') ? -66f : -8f;
+            float y = label.StartsWith('F') ? 90f : label.StartsWith('R') ? -26f : 32f;
             var t = new TileUi();
             var go = new GameObject("Tile" + label);
             t.Rect = go.AddComponent<RectTransform>();
@@ -320,11 +351,53 @@ namespace TireDamage
                 ui.Fill.rectTransform.sizeDelta = new Vector2(ui.Rect.rect.width * p, 0f);
             }
 
+            RefreshPressure(down, moving);
+
             string status = !Car.Valid ? "No car" : moving ? "Stop the car to work on the tires" : Tires.RepairText ?? "";
             if (status != _lastStatus) { _lastStatus = status; _status.text = status; }
-            string close = Gamepad.current != null ? "A hold to repair   ·   B close" : $"{Settings.TireKey.Value} to close";
+            string close = Gamepad.current != null ? "A repair   ·   LB/RB pressure   ·   B close" : $"{Settings.TireKey.Value} to close";
             string footer = $"Spares {Tires.SparesLeft}/{Car.Spares.Count}   ·   Tool kit {(Car.HasToolKit ? "yes" : "no")}   ·   {close}";
             if (footer != _lastFooter) { _lastFooter = footer; _footer.text = footer; }
+        }
+
+        /// <summary>
+        /// The −/+ boxes (mouse) and LB/RB (controller) change the pressure of all tires by 1 PSI,
+        /// repeating while held. Only with the car stopped. Saved when the screen closes.
+        /// </summary>
+        private static void RefreshPressure(bool mouseDown, bool moving)
+        {
+            var pr = Settings.PressureRules();
+            float psi = Settings.Psi();
+            bool overMinus = RectTransformUtility.RectangleContainsScreenPoint(_minus, _mouse);
+            bool overPlus = RectTransformUtility.RectangleContainsScreenPoint(_plus, _mouse);
+            var pad = Gamepad.current;
+            int dir = 0;
+            if (mouseDown && overMinus || pad != null && pad.leftShoulder.isPressed) dir = -1;
+            else if (mouseDown && overPlus || pad != null && pad.rightShoulder.isPressed) dir = 1;
+
+            if (dir == 0 || moving) _psiRepeatAt = 0f;
+            else if (Time.unscaledTime >= _psiRepeatAt)
+            {
+                // First step at once, then repeat after a short pause.
+                _psiRepeatAt = Time.unscaledTime + (_psiRepeatAt == 0f ? 0.4f : 0.08f);
+                float next = Pressure.Change(psi, dir, pr);
+                if (next != psi)
+                {
+                    Settings.TirePsi.Value = next;
+                    _psiDirty = true;
+                    psi = next;
+                }
+            }
+
+            _minusImg.color = new Color(1f, 1f, 1f, overMinus && !moving ? 0.18f : 0.08f);
+            _plusImg.color = new Color(1f, 1f, 1f, overPlus && !moving ? 0.18f : 0.08f);
+            float danger = Pressure.Danger(psi, pr);
+            _psi.color = danger > 0f ? Flat : Pressure.Softness(psi, pr) > 0f ? Worn : Color.white;
+            _psiEffect.color = danger > 0f ? Flat : Dim;
+            var text = $"{psi:0} PSI";
+            if (text != _lastPsi) { _lastPsi = text; _psi.text = text; }
+            var effect = Pressure.Describe(psi, pr);
+            if (effect != _lastPsiEffect) { _lastPsiEffect = effect; _psiEffect.text = effect; }
         }
 
         // ------------------------------------------------------------------ helpers

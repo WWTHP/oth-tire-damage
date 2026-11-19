@@ -65,6 +65,21 @@ namespace TireDamage
             return State;
         }
 
+        /// <summary>
+        /// Slow wear of a good tire (driving under-inflated). Health goes down; at 0 the tire pops
+        /// (never ruptures straight away). Returns Popped when it gives out.
+        /// </summary>
+        public TireState? Abrade(float amount)
+        {
+            if (State != TireState.Ok || !float.IsFinite(amount) || amount <= 0f) return null;
+            Health -= amount;
+            if (Health > 0f) return null;
+            Health = 0f;
+            State = TireState.Popped;
+            Carcass = 1f;
+            return State;
+        }
+
         /// <summary>Driving <paramref name="metres"/> on a popped tire. Returns Ruptured when it gives out.</summary>
         public TireState? Drive(float metres, TireRules r)
         {
