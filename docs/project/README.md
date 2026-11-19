@@ -69,6 +69,7 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 0.5.3 | 2026-11-18 | Grip diagnostics: `LogGrip` logs every 3 s, while driving below full pressure, the ground under each tire (label, its grip and drag), the cornering share and the multiplier set vs read back. The pressure grip now multiplies the game's own friction multiplier (re-read each step) instead of replacing it. |
 | 0.5.2 | 2026-11-18 | Mud and deep mud count as loose ground. Low-pressure wear and the extra hit damage only apply on hard ground: on mud, sand, snow and ice, where low pressure helps, it does no harm. |
 | 0.5.1 | 2026-11-18 | Low pressure no longer helps cornering: it adds traction only on sand, snow and ice, and cornering grip drops on any ground (`LowPsiCornerGrip`, ×0.85 at the minimum). Grip is set per wheel every fixed step from the ground under it and how much it is cornering. |
 | 0.5.0 | 2026-11-18 | Tire pressure: one PSI for all tires on the F4 screen (−/+, controller LB/RB; car stopped) and the hub tab. Full = normal game tires; lower = more grip, slower (smaller rolling radius); below the safe pressure the tires wear while driving and hits hurt more. Grip may now go above ×1. |

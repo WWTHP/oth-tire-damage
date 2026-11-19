@@ -178,6 +178,7 @@ namespace TireDamage
             Section("Other");
             Toggle(Settings.ShowToasts, "On-screen messages");
             Toggle(Settings.LogHits, "Log every hit (tuning)");
+            Toggle(Settings.LogGrip, "Log ground and grip below full pressure (tuning)");
             if (CrashGuard.DisabledStages.Count > 0)
             {
                 Info("Switched off after the game crashed in it: " + string.Join(", ", CrashGuard.DisabledStages));

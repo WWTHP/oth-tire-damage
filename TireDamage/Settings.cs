@@ -49,6 +49,7 @@ namespace TireDamage
         internal static MelonPreferences_Entry<float> ServiceRadius;
         internal static MelonPreferences_Entry<bool> ShowToasts;
         internal static MelonPreferences_Entry<bool> LogHits;
+        internal static MelonPreferences_Entry<bool> LogGrip;
 
         public static void Init()
         {
@@ -116,6 +117,7 @@ namespace TireDamage
                 "Stopping this close to a house or the mechanic replaces every tire (0 = only the game's repairs).");
             ShowToasts = Cat.CreateEntry("ShowToasts", true, "On-screen messages", "Show pops, repairs and services on screen.");
             LogHits = Cat.CreateEntry("LogHits", true, "Log hits", "Log every damaging hit (for tuning).");
+            LogGrip = Cat.CreateEntry("LogGrip", true, "Log grip", "Every 3 s while driving below full pressure: ground and grip per tire (for tuning).");
         }
 
         private static MelonPreferences_Entry<float> Float(string id, float def, float min, float max, string name, string desc) =>
