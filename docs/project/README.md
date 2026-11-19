@@ -9,6 +9,8 @@ Current version: `Mod.Version` in `TireDamage/Mod.cs`. Settings: `MelonPreferenc
 edited in the settings hub tab **Tires** (`HubTab.cs`: diagnostics + settings), or with **F1**
 (`MenuKey`) when the hub isn't installed. **F4** (`TireKey`, was `RepairKey`) opens the tire repair
 screen, the place where tires are fixed. Both keys can be set with "press a key" in the tab.
+Controller: `TirePadButtons` (default `L3+R3`, pressed together) opens/closes it; D-pad or left
+stick picks a tire, hold A repairs, B closes. The game binds every pad button, hence a chord.
 
 ## Rules
 
@@ -35,6 +37,7 @@ screen, the place where tires are fixed. Both keys can be set with "press a key"
 | `TirePanel.cs` | F4 repair screen in the HUD canvas: cloned tilt-dial blurred glass, HUD font, tire tiles, mouse hold (CrashGuard stage `panel`) |
 | `Menu.cs`, `Toast.cs` | hub tab / F1 window (diagnostics, settings, key capture), IMGUI fallback of the repair screen, on-screen messages |
 | `HubTab.cs` | settings hub snippet (mod-template `snippets/generic/HubTab.cs.txt`) |
+| `Core/PadInput.cs` | controller chord parsing (`L3+R3`, aliases A/B/X/Y, LB/RB, LT/RT, View/Start…) and tile navigation by wheel position |
 | `Core/TireModel.cs`, `Core/FieldRepair.cs` | damage model, repair planning, part counting, wheel labels |
 
 ## Design notes
@@ -59,6 +62,7 @@ screen, the place where tires are fixed. Both keys can be set with "press a key"
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 0.4.0 | 2026-11-17 | Controller support on the tire screen: L3+R3 (`TirePadButtons`, configurable) opens/closes it, D-pad / left stick selects a tire (highlighted), hold A repairs, B closes. |
 | 0.3.1 | 2026-11-17 | Repair screen sleeker: smaller panel and tiles, thin tire bars, frames only on hover, spaced lighter text; tire state text auto-sizes (RUPTURED no longer spills out of its tile). |
 | 0.3.0 | 2026-11-17 | F4 (`TireKey`, configurable, press-a-key in the tab) opens a dedicated tire repair screen in the HUD style: car from above, a tile per tire with health %, click and hold to patch or fit a spare. The hub tab is diagnostics and settings only. Holding F4 no longer repairs. |
 | 0.2.0 | 2026-11-17 | Tires tab is the hub's first tab (F5): each tire's health in %, click and hold a tire's button to patch it (popped, tool kit) or fit a spare (ruptured, or popped without a tool kit). F4 still repairs the worst tire. Tire state is deliberately not saved (new games start at a camp or the mechanic). |

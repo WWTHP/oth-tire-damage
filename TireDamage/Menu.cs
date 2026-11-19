@@ -119,6 +119,7 @@ namespace TireDamage
             for (int i = 0; i < Tires.Count; i++) TireRow(i, false);
             Info($"Spare wheels: {Tires.SparesLeft} of {Car.Spares.Count} left   Tool kit: {(Car.HasToolKit ? "yes" : "no")}");
             KeyRow(Settings.TireKey, "Tire repair screen key");
+            Info($"Controller: {Settings.TirePadButtons.Value} opens it (TirePadButtons in MelonPreferences.cfg); D-pad picks, hold A repairs, B closes.");
             if (!HubTab.HubPresent) KeyRow(Settings.MenuKey, "Settings menu key");
 
             Section("Test");

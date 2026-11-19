@@ -9,7 +9,9 @@ namespace TireDamage
     /// <summary>
     /// The tire repair screen (TireKey, default F4): a panel in the game's HUD style showing the car
     /// from above with a tile per tire (health %, state, what holding it does). Click and hold a
-    /// flat tire to patch it or fit a spare; the tile fills up while you hold.
+    /// flat tire to patch it or fit a spare; the tile fills up while you hold. Controller: the
+    /// TirePadButtons chord (L3+R3) opens/closes it, D-pad / left stick picks a tire, hold A to
+    /// repair, B closes.
     ///
     /// Built in the game's own HUD canvas: the background is a clone of the tilt dial's blurred
     /// glass (<c>Mask/BlurredBackground</c>, a TranslucentImage) with its round sprite removed, text
@@ -47,13 +49,18 @@ namespace TireDamage
         private static CursorLockMode _prevLock;
         private static bool _prevVisible;
         private static Vector2 _mouse;
+        private static int _selected = -1;
+        private static string _chordText;
+        private static System.Collections.Generic.List<PadButton> _chord = new();
 
         // ------------------------------------------------------------------ open / close
 
         public static void Update()
         {
-            if (Settings.Pressed(Settings.TireKey)) Toggle();
+            var pad = Gamepad.current;
+            if (Settings.Pressed(Settings.TireKey) || ChordPressed(pad)) Toggle();
             if (!IsOpen) return;
+            if (pad != null) UpdatePad(pad);
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             if (_failed) return;
@@ -69,6 +76,7 @@ namespace TireDamage
             IsOpen = !IsOpen;
             if (IsOpen)
             {
+                _selected = -1; // controller selection starts on the first flat tire
                 _prevLock = Cursor.lockState;
                 _prevVisible = Cursor.visible;
                 return;
@@ -77,6 +85,72 @@ namespace TireDamage
             Cursor.lockState = _prevLock;
             Cursor.visible = _prevVisible;
         }
+
+        // ------------------------------------------------------------------ controller
+
+        /// <summary>All chord buttons held, at least one of them pressed this frame.</summary>
+        private static bool ChordPressed(Gamepad pad)
+        {
+            if (pad == null) return false;
+            if (_chordText != Settings.TirePadButtons.Value)
+            {
+                _chordText = Settings.TirePadButtons.Value;
+                _chord = PadInput.ParseChord(_chordText);
+                if (_chord == null) Mod.Log.Warning($"TirePadButtons '{_chordText}' isn't a valid button combination (e.g. L3+R3); controller can't open the tire screen.");
+            }
+            if (_chord == null || _chord.Count == 0) return false;
+            bool any = false;
+            foreach (var b in _chord)
+            {
+                var c = Control(pad, b);
+                if (c == null || !c.isPressed) return false;
+                any |= c.wasPressedThisFrame;
+            }
+            return any;
+        }
+
+        /// <summary>D-pad / left stick moves the selection, A held repairs it, B closes.</summary>
+        private static void UpdatePad(Gamepad pad)
+        {
+            if (Tires.Count == 0) return;
+            if (_selected < 0 || _selected >= Tires.Count) _selected = FirstFlat();
+            var labels = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < Tires.Count; i++) labels.Add(Tires.Label(i));
+            if (pad.dpad.up.wasPressedThisFrame || pad.leftStick.up.wasPressedThisFrame) _selected = PadInput.Move(labels, _selected, NavDir.Up);
+            if (pad.dpad.down.wasPressedThisFrame || pad.leftStick.down.wasPressedThisFrame) _selected = PadInput.Move(labels, _selected, NavDir.Down);
+            if (pad.dpad.left.wasPressedThisFrame || pad.leftStick.left.wasPressedThisFrame) _selected = PadInput.Move(labels, _selected, NavDir.Left);
+            if (pad.dpad.right.wasPressedThisFrame || pad.leftStick.right.wasPressedThisFrame) _selected = PadInput.Move(labels, _selected, NavDir.Right);
+            if (pad.buttonSouth.isPressed && Car.Speed <= 1f && Tires.PlanFor(_selected).Kind != RepairKind.None)
+                Tires.HoldFromMenu(_selected);
+            if (pad.buttonEast.wasPressedThisFrame && IsOpen) Toggle();
+        }
+
+        private static int FirstFlat()
+        {
+            for (int i = 0; i < Tires.Count; i++)
+                if (Tires.TireAt(i).State != TireState.Ok) return i;
+            return 0;
+        }
+
+        private static UnityEngine.InputSystem.Controls.ButtonControl Control(Gamepad pad, PadButton b) => b switch
+        {
+            PadButton.South => pad.buttonSouth,
+            PadButton.East => pad.buttonEast,
+            PadButton.West => pad.buttonWest,
+            PadButton.North => pad.buttonNorth,
+            PadButton.LeftShoulder => pad.leftShoulder,
+            PadButton.RightShoulder => pad.rightShoulder,
+            PadButton.LeftTrigger => pad.leftTrigger,
+            PadButton.RightTrigger => pad.rightTrigger,
+            PadButton.LeftStickPress => pad.leftStickButton,
+            PadButton.RightStickPress => pad.rightStickButton,
+            PadButton.Start => pad.startButton,
+            PadButton.Select => pad.selectButton,
+            PadButton.DpadUp => pad.dpad.up,
+            PadButton.DpadDown => pad.dpad.down,
+            PadButton.DpadLeft => pad.dpad.left,
+            _ => pad.dpad.right,
+        };
 
         /// <summary>OnGUI: remember the mouse (IMGUI coordinates, y down) for hit tests.</summary>
         public static void TrackMouse()
@@ -227,7 +301,8 @@ namespace TireDamage
                 var color = tire.State != TireState.Ok ? Flat : tire.Health < 0.5f ? Worn : Good;
                 ui.Tire.color = color;
                 ui.Health.color = color;
-                ui.Frame.color = new Color(1f, 1f, 1f, hover && plan.Kind != RepairKind.None ? 0.10f : 0f);
+                bool selected = i == _selected && Gamepad.current != null;
+                ui.Frame.color = new Color(1f, 1f, 1f, selected ? 0.14f : hover && plan.Kind != RepairKind.None ? 0.10f : 0f);
 
                 var health = FieldRepair.Describe(tire.State, tire.Health);
                 if (health != ui.LastHealth) { ui.LastHealth = health; ui.Health.text = health; }
@@ -247,8 +322,8 @@ namespace TireDamage
 
             string status = !Car.Valid ? "No car" : moving ? "Stop the car to work on the tires" : Tires.RepairText ?? "";
             if (status != _lastStatus) { _lastStatus = status; _status.text = status; }
-            string footer = $"Spares {Tires.SparesLeft}/{Car.Spares.Count}   ·   Tool kit {(Car.HasToolKit ? "yes" : "no")}   ·   " +
-                            $"{Settings.TireKey.Value} to close";
+            string close = Gamepad.current != null ? "A hold to repair   ·   B close" : $"{Settings.TireKey.Value} to close";
+            string footer = $"Spares {Tires.SparesLeft}/{Car.Spares.Count}   ·   Tool kit {(Car.HasToolKit ? "yes" : "no")}   ·   {close}";
             if (footer != _lastFooter) { _lastFooter = footer; _footer.text = footer; }
         }
 
