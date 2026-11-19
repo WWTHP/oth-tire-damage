@@ -199,13 +199,43 @@ namespace TireDamage.Tests
             Assert.Equal(expected, Pressure.WheelGrip(8f, Rules(), loose, share), 4);
         }
 
+        [Theory]
+        [InlineData(32f, 1f)]
+        [InlineData(20f, 0.75f)]
+        [InlineData(8f, 0.5f)]
+        public void DragMul_LinearToMinimum(float psi, float expected)
+        {
+            Assert.Equal(expected, Pressure.DragMul(psi, Rules()), 4);
+        }
+
+        [Theory]
+        [InlineData(float.NaN, 1f)]
+        [InlineData(-1f, 0f)]
+        [InlineData(3f, 1f)]
+        public void DragMul_BadTunable_Clamped(float atMin, float expected)
+        {
+            var r = Rules();
+            r.DragAtMin = atMin;
+
+            Assert.Equal(expected, Pressure.DragMul(8f, r), 4);
+        }
+
+        [Theory]
+        [InlineData(true, 0, true)]   // solo, or every car runs on its own player's machine
+        [InlineData(true, 1, false)]  // this machine also runs another player's car (host simulates all)
+        [InlineData(false, 0, false)] // own car simulated elsewhere: changing drag here does nothing good
+        public void MayChangeGroundDrag_OnlyWhenOnlyOwnCarSimulatedHere(bool own, int others, bool expected)
+        {
+            Assert.Equal(expected, Pressure.MayChangeGroundDrag(own, others));
+        }
+
         [Fact]
         public void Describe_FullLowAndTooLow()
         {
             var r = Rules();
 
             Assert.StartsWith("Full pressure", Pressure.Describe(32f, r));
-            Assert.Equal("Loose ground +20%  ·  Corners -10%  ·  Speed -5%", Pressure.Describe(16f, r));
+            Assert.Equal("Loose ground +20% grip, -33% drag  ·  Corners -10%  ·  Speed -5%", Pressure.Describe(16f, r));
             Assert.EndsWith("TOO LOW: wears on hard ground", Pressure.Describe(10f, r));
         }
 

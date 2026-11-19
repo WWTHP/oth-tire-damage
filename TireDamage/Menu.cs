@@ -156,6 +156,8 @@ namespace TireDamage
             Slider(Settings.SafePsi, "Safe pressure (PSI)", 1f, 60f, "F0");
             Slider(Settings.LowPsiGrip, "Mud/sand/snow/ice traction at lowest", 1f, 2f, "P0");
             Slider(Settings.LowPsiCornerGrip, "Cornering grip at lowest", 0.3f, 1f, "P0");
+            Slider(Settings.LowPsiDrag, "Mud/sand/snow/ice drag at lowest", 0f, 1f, "P0");
+            Info(GroundDrag.Describe());
             Slider(Settings.LowPsiRadius, "Radius at lowest", 0.7f, 1f, "P0");
             Slider(Settings.LowPsiWearPerKm, "Wear per km at lowest", 0f, 5f, "F2");
             Slider(Settings.LowPsiHitFactor, "Hit damage at lowest", 1f, 4f, "F2");

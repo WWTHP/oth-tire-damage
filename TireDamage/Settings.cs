@@ -42,6 +42,7 @@ namespace TireDamage
         internal static MelonPreferences_Entry<float> SafePsi;
         internal static MelonPreferences_Entry<float> LowPsiGrip;
         internal static MelonPreferences_Entry<float> LowPsiCornerGrip;
+        internal static MelonPreferences_Entry<float> LowPsiDrag;
         internal static MelonPreferences_Entry<float> LowPsiRadius;
         internal static MelonPreferences_Entry<float> LowPsiWearPerKm;
         internal static MelonPreferences_Entry<float> LowPsiHitFactor;
@@ -106,6 +107,9 @@ namespace TireDamage
                 "Traction on mud, sand, snow and ice at the lowest pressure (x normal). Other ground: unchanged.");
             LowPsiCornerGrip = Float("LowPsiCornerGrip", 0.85f, 0.3f, 1f, "Cornering grip at lowest pressure",
                 "Cornering grip at the lowest pressure, on any ground (x normal): soft sidewalls roll over.");
+            LowPsiDrag = Float("LowPsiDrag", 0.5f, 0f, 1f, "Mud/sand/snow/ice drag at lowest pressure",
+                "Ground drag of mud, sand, snow and ice at the lowest pressure (x normal): the tire floats instead of digging in. " +
+                "Only applied while this machine runs your car's physics and no other player's car.");
             LowPsiRadius = Float("LowPsiRadius", 0.92f, 0.7f, 1f, "Radius at lowest pressure",
                 "Wheel radius at the lowest pressure (x normal); smaller = lower top speed.");
             LowPsiWearPerKm = Float("LowPsiWearPerKm", 0.5f, 0f, 5f, "Wear per km at lowest pressure",
@@ -139,6 +143,7 @@ namespace TireDamage
             SafePsi = SafePsi.Value,
             GripAtMin = LowPsiGrip.Value,
             CornerGripAtMin = LowPsiCornerGrip.Value,
+            DragAtMin = LowPsiDrag.Value,
             RadiusAtMin = LowPsiRadius.Value,
             WearPerKmAtMin = LowPsiWearPerKm.Value,
             HitFactorAtMin = LowPsiHitFactor.Value,

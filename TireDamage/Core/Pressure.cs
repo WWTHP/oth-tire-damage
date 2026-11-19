@@ -20,6 +20,9 @@ namespace TireDamage
         /// <summary>Cornering grip multiplier at <see cref="MinPsi"/>, on any ground (the sidewalls flex).</summary>
         public float CornerGripAtMin = 0.85f;
 
+        /// <summary>Ground drag multiplier on loose ground at <see cref="MinPsi"/> (the tire floats instead of digging in).</summary>
+        public float DragAtMin = 0.5f;
+
         /// <summary>Wheel radius multiplier at <see cref="MinPsi"/> (the tire squats: lower top speed).</summary>
         public float RadiusAtMin = 0.92f;
 
@@ -113,6 +116,17 @@ namespace TireDamage
         public static float RadiusMul(float psi, PressureRules r) =>
             Lerp(1f, Math.Clamp(Finite(r.RadiusAtMin, 1f), 0.5f, 1f), Softness(psi, r));
 
+        /// <summary>Drag of loose ground (≤ 1): lower pressure floats on mud, sand and snow.</summary>
+        public static float DragMul(float psi, PressureRules r) =>
+            Lerp(1f, Math.Clamp(Finite(r.DragAtMin, 1f), 0f, 1f), Softness(psi, r));
+
+        /// <summary>
+        /// Ground drag is a setting of the ground type, shared by every car this machine simulates.
+        /// Change it only when this machine runs the local car's physics and no other player's car.
+        /// </summary>
+        public static bool MayChangeGroundDrag(bool ownCarSimulatedHere, int otherPlayersCarsSimulatedHere) =>
+            ownCarSimulatedHere && otherPlayersCarsSimulatedHere == 0;
+
         /// <summary>0 at or above safe, 1 at min.</summary>
         public static float Danger(float psi, PressureRules r)
         {
@@ -135,7 +149,7 @@ namespace TireDamage
         {
             if (Softness(psi, r) <= 0f) return "Full pressure: normal grip and speed";
             int grip = Percent(Grip(psi, r)), corner = Percent(CornerGrip(psi, r)), speed = Percent(RadiusMul(psi, r));
-            var text = $"Loose ground {grip:+0;-0;0}%  ·  Corners {corner:+0;-0;0}%  ·  Speed {speed:+0;-0;0}%";
+            var text = $"Loose ground {grip:+0;-0;0}% grip, {Percent(DragMul(psi, r)):+0;-0;0}% drag  ·  Corners {corner:+0;-0;0}%  ·  Speed {speed:+0;-0;0}%";
             return Danger(psi, r) > 0f ? text + "  ·  TOO LOW: wears on hard ground" : text;
         }
 

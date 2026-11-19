@@ -14,7 +14,7 @@ namespace TireDamage
     /// </summary>
     public sealed class Mod : MelonMod
     {
-        public const string Version = "0.5.3";
+        public const string Version = "0.6.0";
         internal static MelonLogger.Instance Log;
         private static readonly string[] Categories = { "TireDamage" };
         private int _physicsErrors;
@@ -37,8 +37,22 @@ namespace TireDamage
             if (Settings.Enabled.Value && !keyTaken) TirePanel.Update();
             else if (TirePanel.IsOpen && !Settings.Enabled.Value) TirePanel.Toggle();
             Tires.Update();
+            UpdateGroundDrag();
             if (Settings.Enabled.Value) Service.Update(HarmonyInstance);
         }
+
+        private static void UpdateGroundDrag()
+        {
+            if (!CrashGuard.Enter("drag")) return;
+            try { GroundDrag.Update(); }
+            catch (System.Exception ex)
+            {
+                if (_dragErrors++ < 5) Log.Warning("Ground drag: " + ex);
+            }
+            CrashGuard.Exit("drag");
+        }
+
+        private static int _dragErrors;
 
         public override void OnFixedUpdate()
         {
