@@ -132,6 +132,17 @@ namespace TireDamage.Tests
         }
 
         [Fact]
+        public void LowPressure_LooseGround_NoWearNoExtraHitDamage()
+        {
+            var r = Rules();
+
+            Assert.Equal(0f, Pressure.WearPerKm(8f, r, loose: true));
+            Assert.Equal(1f, Pressure.HitFactor(8f, r, loose: true));
+            Assert.Equal(0.5f, Pressure.WearPerKm(8f, r, loose: false), 4);
+            Assert.Equal(1.5f, Pressure.HitFactor(8f, r, loose: false), 4);
+        }
+
+        [Fact]
         public void Grip_BelowOneOrCornerAboveOne_Clamped()
         {
             var r = Rules();
@@ -150,9 +161,10 @@ namespace TireDamage.Tests
         [InlineData(0x2024, true)]   // Grass|Dirt|Ice: any loose flag counts
         [InlineData(0x4, false)]     // Gravel
         [InlineData(0x80, false)]    // Rock
-        [InlineData(0x8, false)]     // Mud
+        [InlineData(0x8, true)]      // Mud
+        [InlineData(0x10, true)]     // DeepMud
         [InlineData(0, false)]       // None
-        public void IsLoose_SandSnowIceOnly(int label, bool expected)
+        public void IsLoose_MudSandSnowIceOnly(int label, bool expected)
         {
             Assert.Equal(expected, Pressure.IsLoose(label));
         }
@@ -193,8 +205,8 @@ namespace TireDamage.Tests
             var r = Rules();
 
             Assert.StartsWith("Full pressure", Pressure.Describe(32f, r));
-            Assert.Equal("Sand/snow +20%  ·  Corners -10%  ·  Speed -5%", Pressure.Describe(16f, r));
-            Assert.EndsWith("TOO LOW: tires wearing", Pressure.Describe(10f, r));
+            Assert.Equal("Loose ground +20%  ·  Corners -10%  ·  Speed -5%", Pressure.Describe(16f, r));
+            Assert.EndsWith("TOO LOW: wears on hard ground", Pressure.Describe(10f, r));
         }
 
         [Fact]

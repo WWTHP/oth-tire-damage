@@ -11,10 +11,10 @@ namespace TireDamage
         /// <summary>Lowest pressure the player can set.</summary>
         public float MinPsi = 8f;
 
-        /// <summary>Below this the tires wear while driving and suffer more from hits (pinch flats).</summary>
+        /// <summary>Below this the tires wear while driving on hard ground and suffer more from hits there (pinch flats).</summary>
         public float SafePsi = 16f;
 
-        /// <summary>Traction multiplier on loose ground (sand, snow, ice) at <see cref="MinPsi"/> (1 at normal, linear in between).</summary>
+        /// <summary>Traction multiplier on loose ground (mud, sand, snow, ice) at <see cref="MinPsi"/> (1 at normal, linear in between).</summary>
         public float GripAtMin = 1.3f;
 
         /// <summary>Cornering grip multiplier at <see cref="MinPsi"/>, on any ground (the sidewalls flex).</summary>
@@ -32,9 +32,10 @@ namespace TireDamage
 
     /// <summary>
     /// Tire pressure, one value for all tires. Full pressure is the game's own tire: every effect is
-    /// exactly neutral there. Lower pressure gives more traction on loose ground (sand, snow, ice),
+    /// exactly neutral there. Lower pressure gives more traction on loose ground (mud, sand, snow, ice),
     /// less cornering grip everywhere, and a smaller rolling radius (slower);
-    /// below the safe pressure, driving wears the tires and hits hurt them more.
+    /// below the safe pressure, driving on hard ground wears the tires and hits there hurt them more
+    /// (loose ground, where low pressure helps, does them no harm).
     /// Rules are sanitised so odd settings (min above normal, safe outside the range) stay usable.
     /// </summary>
     internal static class Pressure
@@ -69,11 +70,11 @@ namespace TireDamage
         }
 
         /// <summary>
-        /// Ground labels (the game's <c>MaterialLabel</c> flags) where low pressure adds traction:
-        /// Snow 0x800, DeepSnow 0x1000, Ice 0x2000, Sand 0x4000, DeepSand 0x8000, QuickSand 0x10000,
-        /// ShallowSnow 0x40000.
+        /// Ground labels (the game's <c>MaterialLabel</c> flags) where low pressure adds traction and
+        /// does no damage: Mud 0x8, DeepMud 0x10, Snow 0x800, DeepSnow 0x1000, Ice 0x2000, Sand 0x4000,
+        /// DeepSand 0x8000, QuickSand 0x10000, ShallowSnow 0x40000.
         /// </summary>
-        public const int LooseLabels = 0x800 | 0x1000 | 0x2000 | 0x4000 | 0x8000 | 0x10000 | 0x40000;
+        public const int LooseLabels = 0x8 | 0x10 | 0x800 | 0x1000 | 0x2000 | 0x4000 | 0x8000 | 0x10000 | 0x40000;
 
         public static bool IsLoose(int label) => (label & LooseLabels) != 0;
 
@@ -121,19 +122,21 @@ namespace TireDamage
             return (safe - p) / (safe - min);
         }
 
-        public static float WearPerKm(float psi, PressureRules r) =>
-            Math.Max(0f, Finite(r.WearPerKmAtMin, 0f)) * Danger(psi, r);
+        /// <summary>Health lost per km driven; none on <paramref name="loose"/> ground.</summary>
+        public static float WearPerKm(float psi, PressureRules r, bool loose = false) =>
+            loose ? 0f : Math.Max(0f, Finite(r.WearPerKmAtMin, 0f)) * Danger(psi, r);
 
-        public static float HitFactor(float psi, PressureRules r) =>
-            Lerp(1f, Math.Max(1f, Finite(r.HitFactorAtMin, 1f)), Danger(psi, r));
+        /// <summary>Hit damage multiplier; 1 on <paramref name="loose"/> ground.</summary>
+        public static float HitFactor(float psi, PressureRules r, bool loose = false) =>
+            loose ? 1f : Lerp(1f, Math.Max(1f, Finite(r.HitFactorAtMin, 1f)), Danger(psi, r));
 
-        /// <summary>Short effect summary for the UI, e.g. "Sand/snow +15%  ·  Corners -8%  ·  Speed -4%".</summary>
+        /// <summary>Short effect summary for the UI, e.g. "Loose ground +15%  ·  Corners -8%  ·  Speed -4%".</summary>
         public static string Describe(float psi, PressureRules r)
         {
             if (Softness(psi, r) <= 0f) return "Full pressure: normal grip and speed";
             int grip = Percent(Grip(psi, r)), corner = Percent(CornerGrip(psi, r)), speed = Percent(RadiusMul(psi, r));
-            var text = $"Sand/snow {grip:+0;-0;0}%  ·  Corners {corner:+0;-0;0}%  ·  Speed {speed:+0;-0;0}%";
-            return Danger(psi, r) > 0f ? text + "  ·  TOO LOW: tires wearing" : text;
+            var text = $"Loose ground {grip:+0;-0;0}%  ·  Corners {corner:+0;-0;0}%  ·  Speed {speed:+0;-0;0}%";
+            return Danger(psi, r) > 0f ? text + "  ·  TOO LOW: wears on hard ground" : text;
         }
 
         private static int Percent(float mul) => (int)Math.Round((mul - 1f) * 100f, MidpointRounding.AwayFromZero);

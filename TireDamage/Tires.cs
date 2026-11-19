@@ -23,7 +23,7 @@ namespace TireDamage
             public float SetRadius = -1f;  // the radius we last set (-1 = untouched)
             public float Grip = 1f;        // friction multiplier we last set (1 = untouched)
             public float Share = 0.5f;     // smoothed sideways share of the tire's slip
-            public bool Loose;             // on sand, snow or ice (last fixed step)
+            public bool Loose;             // on mud, sand, snow or ice (last fixed step; kept while the pressure is below full)
             public float NextHit;
         }
 
@@ -62,7 +62,7 @@ namespace TireDamage
         public static string Label(int i) => Wheels[i].Label;
         public static Tire TireAt(int i) => Wheels[i].Tire;
 
-        /// <summary>Grip multiplier on tire <paramref name="i"/> now, and whether it is on sand/snow/ice.</summary>
+        /// <summary>Grip multiplier on tire <paramref name="i"/> now, and whether it is on mud/sand/snow/ice.</summary>
         public static float GripAt(int i, out bool loose)
         {
             loose = Wheels[i].Loose;
@@ -93,9 +93,13 @@ namespace TireDamage
 
             float metres = Car.Speed * Time.deltaTime;
             var rules = Settings.Rules();
-            float lowWear = metres / 1000f * Pressure.WearPerKm(Settings.Psi(), Settings.PressureRules());
+            float psi = Settings.Psi();
+            var pr = Settings.PressureRules();
             for (int i = 0; i < Wheels.Count; i++)
             {
+                // Low pressure only harms the tire on hard ground (Loose is kept up to date whenever
+                // the pressure is below full, see UpdateGrip).
+                float lowWear = metres / 1000f * Pressure.WearPerKm(psi, pr, Wheels[i].Loose);
                 if (Wheels[i].Tire.Drive(metres, rules) is TireState s) Announce(i, s, "driving on a flat");
                 if (Wheels[i].Tire.Abrade(lowWear) is TireState w) Announce(i, w, "pressure too low");
             }
@@ -142,7 +146,7 @@ namespace TireDamage
 
         /// <summary>
         /// Friction multiplier of wheel <paramref name="i"/>: flat tires a fixed value; good tires at
-        /// low pressure blend extra traction (sand/snow/ice only) with less cornering grip by how
+        /// low pressure blend extra traction (mud/sand/snow/ice only) with less cornering grip by how
         /// much of the tire's slip is sideways. Written only when it changes noticeably.
         /// </summary>
         private static void UpdateGrip(Il2CppVehiclePhysics.VehicleBase v, int i, Il2CppVehiclePhysics.VehicleBase.WheelState ws,
@@ -179,7 +183,7 @@ namespace TireDamage
             if (damage <= 0f) return;
             var w = Wheels[i];
             if (Time.time < w.NextHit) return;
-            if (w.Tire.State == TireState.Ok) damage *= Pressure.HitFactor(Settings.Psi(), Settings.PressureRules());
+            if (w.Tire.State == TireState.Ok) damage *= Pressure.HitFactor(Settings.Psi(), Settings.PressureRules(), w.Loose);
             w.NextHit = Time.time + HitCooldown;
             var change = w.Tire.Hit(damage, rules);
             if (Settings.LogHits.Value)

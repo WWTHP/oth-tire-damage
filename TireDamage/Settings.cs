@@ -96,21 +96,21 @@ namespace TireDamage
                 "Hide a spare wheel cosmetic once it is fitted (back after a service).");
 
             TirePsi = Float("TirePsi", 32f, 1f, 60f, "Tire pressure (PSI)",
-                "Pressure of all tires. Full (NormalPsi) = the game's normal tires; lower = more traction on sand/snow/ice, worse cornering, slower, and below SafePsi the tires wear.");
+                "Pressure of all tires. Full (NormalPsi) = the game's normal tires; lower = more traction on mud/sand/snow/ice, worse cornering, slower, and below SafePsi the tires wear on hard ground.");
             NormalPsi = Float("NormalPsi", 32f, 20f, 60f, "Full pressure (PSI)", "Full pressure: exactly the game's normal tire behaviour.");
             MinPsi = Float("MinPsi", 8f, 1f, 30f, "Lowest pressure (PSI)", "The lowest pressure you can set.");
             SafePsi = Float("SafePsi", 16f, 1f, 60f, "Safe pressure (PSI)",
                 "Below this, driving wears the tires and hits damage them more (pinch flats).");
-            LowPsiGrip = Float("LowPsiGrip", 1.3f, 1f, 2f, "Sand/snow/ice traction at lowest pressure",
-                "Traction on sand, snow and ice at the lowest pressure (x normal). Other ground: unchanged.");
+            LowPsiGrip = Float("LowPsiGrip", 1.3f, 1f, 2f, "Mud/sand/snow/ice traction at lowest pressure",
+                "Traction on mud, sand, snow and ice at the lowest pressure (x normal). Other ground: unchanged.");
             LowPsiCornerGrip = Float("LowPsiCornerGrip", 0.85f, 0.3f, 1f, "Cornering grip at lowest pressure",
                 "Cornering grip at the lowest pressure, on any ground (x normal): soft sidewalls roll over.");
             LowPsiRadius = Float("LowPsiRadius", 0.92f, 0.7f, 1f, "Radius at lowest pressure",
                 "Wheel radius at the lowest pressure (x normal); smaller = lower top speed.");
             LowPsiWearPerKm = Float("LowPsiWearPerKm", 0.5f, 0f, 5f, "Wear per km at lowest pressure",
-                "Tire health lost per km driven at the lowest pressure (none at the safe pressure).");
+                "Tire health lost per km driven on hard ground at the lowest pressure (none at the safe pressure, none on mud/sand/snow/ice).");
             LowPsiHitFactor = Float("LowPsiHitFactor", 1.5f, 1f, 4f, "Hit damage at lowest pressure",
-                "Hit damage multiplier at the lowest pressure (x1 at the safe pressure).");
+                "Hit damage multiplier on hard ground at the lowest pressure (x1 at the safe pressure and on mud/sand/snow/ice).");
 
             ServiceRadius = Float("ServiceRadius", 25f, 0f, 200f, "Service radius (m)",
                 "Stopping this close to a house or the mechanic replaces every tire (0 = only the game's repairs).");
