@@ -48,8 +48,9 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
 
 - The wheel radius the game sets (e.g. a wheel upgrade) is detected and becomes the new normal;
   the mod only ever scales it. Disabling the mod restores radius and grip.
-- The grip multiplier is assumed to be 1.0 normally (the game's tire tiers use the friction object,
-  `SetupTireTier`). Unverified: check grip after a repair in game.
+- The game's friction multiplier (`wheelState.tireForceMult`) reads 1.00 normally and the game
+  never rewrote it in testing; the mod still re-reads it each step and scales it. VPP keeps values
+  above 1 (confirmed in game, 0.5.3 log).
 - Tire state is not saved, by design: new games start at a camp or the mechanic anyway.
 - Multiplayer: only the local car's wheels change; nothing is sent. Whether VPP applies the radius
   for a client's car is untested.
@@ -64,8 +65,8 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
 6. Pressure: F4, −/+ (or LB/RB) to 20 PSI: "Loose ground +15% · Corners -7% · Speed -4%"; corners
    slide earlier, top speed a bit lower; climbs in mud/sand/deep snow/on ice get better. The hub tab's
    "Grip now" line shows each wheel's multiplier and "(loose)" on mud/sand/snow/ice. Down to 10 PSI: red "TOO LOW: wears on hard ground"; on rock/gravel/dirt health drops while driving (~0.4/km) and eventually pops; on mud/sand/snow it does not.
-   Back to 32: car exactly as before. Log: `Tire pressure set to N PSI.` Unverified: whether VPP
-   accepts a friction multiplier above 1, and whether changing it every fixed step feels smooth.
+   Back to 32: car exactly as before. Log: `Tire pressure set to N PSI.` Grip logging for tuning:
+   `LogGripSamples` in the hub tab.
 7. Ground drag: at 8 PSI the log says `Loose-ground drag x0.50 on N ground type(s).` Deep snow and
    sand climbs get easier. Back at 32: `Loose-ground drag restored`. Multiplayer: the
    `Car physics: …` line should show every other player's car with `physics remote`; if one says
@@ -75,6 +76,7 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 0.6.1 | 2026-11-19 | Grip logging (every 3 s below full pressure) is off by default (`LogGripSamples`; switch on in the hub tab for tuning). Confirmed in game: ground detection, grip above ×1, and loose-ground drag all work (single player). |
 | 0.6.0 | 2026-11-19 | Low pressure floats on loose ground: drag of mud, sand, snow and ice down to ×0.5 at the minimum (`LowPsiDrag`), only while this machine runs your car's physics and no other player's car (logged as `Car physics: …`). Release of 0.4.0–0.5.3. |
 | 0.5.3 | 2026-11-18 | Grip diagnostics: `LogGrip` logs every 3 s, while driving below full pressure, the ground under each tire (label, its grip and drag), the cornering share and the multiplier set vs read back. The pressure grip now multiplies the game's own friction multiplier (re-read each step) instead of replacing it. |
 | 0.5.2 | 2026-11-18 | Mud and deep mud count as loose ground. Low-pressure wear and the extra hit damage only apply on hard ground: on mud, sand, snow and ice, where low pressure helps, it does no harm. |
