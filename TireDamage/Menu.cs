@@ -178,6 +178,18 @@ namespace TireDamage
             Info($"Spares: parts named '{Settings.SpareKeywords.Value}' (not '{Settings.SpareExclude.Value}'); " +
                  $"tool kit: '{Settings.ToolKeywords.Value}'. Edit in MelonPreferences.cfg.");
 
+            Section("Tire HUD");
+            Toggle(Settings.ShowHud, "Show the tire HUD (pressure, surface, health, traction)");
+            var corner = TireHud.Corner;
+            if (Button($"Corner: {corner} (click to move)"))
+            {
+                Settings.HudCorner.Value = ((HudCorner)(((int)corner + 1) % 4)).ToString();
+                _dirty = true;
+            }
+            Slider(Settings.HudScale, "HUD size", 0.5f, 2f, "P0");
+            Slider(Settings.HudOffsetX, "Margin from side", 0f, 1000f, "F0");
+            Slider(Settings.HudOffsetY, "Margin from top/bottom", 0f, 1000f, "F0");
+
             Section("Other");
             Toggle(Settings.ShowToasts, "On-screen messages");
             Toggle(Settings.LogHits, "Log every hit (tuning)");

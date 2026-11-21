@@ -22,10 +22,7 @@ namespace TireDamage
     {
         private const string Stage = "panel";
         private const float W = 480f, H = 430f, PsiY = -125f, PsiBoxX = 92f, TileW = 186f, TileH = 84f, TextW = 136f;
-        private static readonly Color Good = new(0.78f, 0.94f, 0.78f, 1f);
-        private static readonly Color Worn = new(1f, 0.82f, 0.45f, 1f);
-        private static readonly Color Flat = new(1f, 0.38f, 0.32f, 1f);
-        private static readonly Color Dim = new(1f, 1f, 1f, 0.55f);
+        private static readonly Color Good = HudUi.Good, Worn = HudUi.Worn, Flat = HudUi.Flat, Dim = HudUi.Dim;
 
         public static bool IsOpen { get; private set; }
 
@@ -184,7 +181,7 @@ namespace TireDamage
                 var dial = dials[0];
                 var canvas = dial.GetComponentInParent<Canvas>();
                 if (canvas == null) throw new System.InvalidOperationException("tilt dial has no canvas");
-                var font = FindFont(canvas);
+                var font = HudUi.FindFont(canvas);
 
                 _root = new GameObject("TireRepairPanel");
                 var rt = _root.AddComponent<RectTransform>();
@@ -194,30 +191,22 @@ namespace TireDamage
                 rt.anchoredPosition = Vector2.zero;
 
                 // Blurred glass like the stock dials, as a plain rectangle.
-                var glassSrc = dial.transform.Find("Mask/BlurredBackground");
-                if (glassSrc != null)
-                {
-                    var glass = Object.Instantiate(glassSrc.gameObject, rt, false);
-                    glass.name = "Glass";
-                    Stretch(glass.GetComponent<RectTransform>());
-                    var img = glass.GetComponent<Image>();
-                    if (img != null) { img.sprite = null; img.raycastTarget = false; }
-                }
-                var shade = Panel("Shade", rt, new Color(0.04f, 0.05f, 0.06f, 0.42f));
-                Stretch(shade.rectTransform);
+                bool glassed = HudUi.Glass(dial, rt);
+                var shade = HudUi.Panel("Shade", rt, new Color(0.04f, 0.05f, 0.06f, 0.42f));
+                HudUi.Stretch(shade.rectTransform);
 
-                var title = Text("Title", rt, font, 20f, Color.white, new Vector2(0f, H / 2f - 26f), W, "TIRES");
+                var title = HudUi.Text("Title", rt, font, 20f, Color.white, new Vector2(0f, H / 2f - 26f), W, "TIRES");
                 title.characterSpacing = 18f;
-                var rule = Panel("Rule", rt, new Color(1f, 1f, 1f, 0.15f));
+                var rule = HudUi.Panel("Rule", rt, new Color(1f, 1f, 1f, 0.15f));
                 rule.rectTransform.sizeDelta = new Vector2(W - 64f, 1f);
                 rule.rectTransform.anchoredPosition = new Vector2(0f, H / 2f - 44f);
-                _status = Text("Status", rt, font, 14f, Worn, new Vector2(0f, H / 2f - 60f), W, "");
+                _status = HudUi.Text("Status", rt, font, 14f, Worn, new Vector2(0f, H / 2f - 60f), W, "");
 
                 // Car body from above, tiles at each wheel.
-                var body = Panel("Body", rt, new Color(1f, 1f, 1f, 0.05f));
+                var body = HudUi.Panel("Body", rt, new Color(1f, 1f, 1f, 0.05f));
                 body.rectTransform.sizeDelta = new Vector2(84f, 176f);
                 body.rectTransform.anchoredPosition = new Vector2(0f, 32f);
-                var nose = Panel("Nose", rt, new Color(1f, 1f, 1f, 0.3f));
+                var nose = HudUi.Panel("Nose", rt, new Color(1f, 1f, 1f, 0.3f));
                 nose.rectTransform.sizeDelta = new Vector2(56f, 2f);
                 nose.rectTransform.anchoredPosition = new Vector2(0f, 118f);
 
@@ -225,31 +214,31 @@ namespace TireDamage
                 for (int i = 0; i < Tires.Count; i++) Tiles.Add(Tile(rt, font, i));
 
                 // Pressure: − [24 PSI] +, effect summary below.
-                var cap = Text("PsiCaption", rt, font, 12f, Dim, new Vector2(0f, PsiY + 30f), W, "TIRE PRESSURE");
+                var cap = HudUi.Text("PsiCaption", rt, font, 12f, Dim, new Vector2(0f, PsiY + 30f), W, "TIRE PRESSURE");
                 cap.characterSpacing = 6f;
-                _psi = Text("Psi", rt, font, 24f, Color.white, new Vector2(0f, PsiY), 140f, "");
-                _minusImg = Panel("PsiMinus", rt, new Color(1f, 1f, 1f, 0.08f));
+                _psi = HudUi.Text("Psi", rt, font, 24f, Color.white, new Vector2(0f, PsiY), 140f, "");
+                _minusImg = HudUi.Panel("PsiMinus", rt, new Color(1f, 1f, 1f, 0.08f));
                 _minus = _minusImg.rectTransform;
                 _minus.sizeDelta = new Vector2(44f, 30f);
                 _minus.anchoredPosition = new Vector2(-PsiBoxX, PsiY);
-                Text("Label", _minus, font, 22f, Color.white, Vector2.zero, 44f, "−");
-                _plusImg = Panel("PsiPlus", rt, new Color(1f, 1f, 1f, 0.08f));
+                HudUi.Text("Label", _minus, font, 22f, Color.white, Vector2.zero, 44f, "−");
+                _plusImg = HudUi.Panel("PsiPlus", rt, new Color(1f, 1f, 1f, 0.08f));
                 _plus = _plusImg.rectTransform;
                 _plus.sizeDelta = new Vector2(44f, 30f);
                 _plus.anchoredPosition = new Vector2(PsiBoxX, PsiY);
-                Text("Label", _plus, font, 22f, Color.white, Vector2.zero, 44f, "+");
-                _psiEffect = Text("PsiEffect", rt, font, 12f, Dim, new Vector2(0f, PsiY - 28f), W - 32f, "");
+                HudUi.Text("Label", _plus, font, 22f, Color.white, Vector2.zero, 44f, "+");
+                _psiEffect = HudUi.Text("PsiEffect", rt, font, 12f, Dim, new Vector2(0f, PsiY - 28f), W - 32f, "");
                 _psiEffect.enableAutoSizing = true; // traction, cornering, speed and the warning on one line
                 _psiEffect.fontSizeMin = 9f;
                 _psiEffect.fontSizeMax = 12f;
                 _lastPsi = _lastPsiEffect = null;
 
-                _footer = Text("Footer", rt, font, 13f, Dim, new Vector2(0f, -H / 2f + 20f), W, "");
+                _footer = HudUi.Text("Footer", rt, font, 13f, Dim, new Vector2(0f, -H / 2f + 20f), W, "");
                 _footer.characterSpacing = 2f;
                 _lastFooter = _lastStatus = null;
                 _builtFor = Car.Generation;
                 Mod.Log.Msg($"Tire panel built on canvas '{canvas.rootCanvas.name}' ({canvas.rootCanvas.renderMode}, font: {(font != null ? font.name : "TMP default")}, " +
-                            $"glass: {(glassSrc != null ? "cloned" : "none")}).");
+                            $"glass: {(glassed ? "cloned" : "none")}).");
             }
             catch (System.Exception ex)
             {
@@ -272,29 +261,29 @@ namespace TireDamage
             t.Rect.sizeDelta = new Vector2(TileW, TileH);
             t.Rect.anchoredPosition = new Vector2(left ? -136f : 136f, y);
 
-            t.Frame = Panel("Frame", t.Rect, new Color(1f, 1f, 1f, 0f));
-            Stretch(t.Frame.rectTransform);
-            t.Fill = Panel("Fill", t.Rect, new Color(1f, 1f, 1f, 0.14f));
+            t.Frame = HudUi.Panel("Frame", t.Rect, new Color(1f, 1f, 1f, 0f));
+            HudUi.Stretch(t.Frame.rectTransform);
+            t.Fill = HudUi.Panel("Fill", t.Rect, new Color(1f, 1f, 1f, 0.14f));
             t.Fill.rectTransform.anchorMin = new Vector2(0f, 0f);
             t.Fill.rectTransform.anchorMax = new Vector2(0f, 1f);
             t.Fill.rectTransform.pivot = new Vector2(0f, 0.5f);
             t.Fill.rectTransform.sizeDelta = new Vector2(0f, 0f);
 
             // The tire itself sits on the car's side of the tile.
-            t.Tire = Panel("Tire", t.Rect, Good);
+            t.Tire = HudUi.Panel("Tire", t.Rect, Good);
             t.Tire.rectTransform.sizeDelta = new Vector2(14f, 60f);
             t.Tire.rectTransform.anchoredPosition = new Vector2(left ? 78f : -78f, 0f);
 
             float tx = left ? -12f : 12f;
-            t.Name = Text("Name", t.Rect, font, 12f, Dim, new Vector2(tx, 27f), TextW, Tires.LongName(label).ToUpperInvariant());
+            t.Name = HudUi.Text("Name", t.Rect, font, 12f, Dim, new Vector2(tx, 27f), TextW, Tires.LongName(label).ToUpperInvariant());
             t.Name.characterSpacing = 6f;
             // Auto-size: "RUPTURED" shrinks to fit the tile instead of spilling out of it.
-            t.Health = Text("Health", t.Rect, font, 26f, Color.white, new Vector2(tx, 1f), TextW, "");
+            t.Health = HudUi.Text("Health", t.Rect, font, 26f, Color.white, new Vector2(tx, 1f), TextW, "");
             t.Health.enableAutoSizing = true;
             t.Health.fontSizeMin = 12f;
             t.Health.fontSizeMax = 26f;
             t.Health.overflowMode = TextOverflowModes.Truncate;
-            t.Action = Text("Action", t.Rect, font, 12f, Dim, new Vector2(tx, -27f), TextW, "");
+            t.Action = HudUi.Text("Action", t.Rect, font, 12f, Dim, new Vector2(tx, -27f), TextW, "");
             t.Action.enableAutoSizing = true;
             t.Action.fontSizeMin = 9f;
             t.Action.fontSizeMax = 12f;
@@ -398,65 +387,6 @@ namespace TireDamage
             if (text != _lastPsi) { _lastPsi = text; _psi.text = text; }
             var effect = Pressure.Describe(psi, pr);
             if (effect != _lastPsiEffect) { _lastPsiEffect = effect; _psiEffect.text = effect; }
-        }
-
-        // ------------------------------------------------------------------ helpers
-
-        private static Image Panel(string name, Transform parent, Color color)
-        {
-            var go = new GameObject(name);
-            var rt = go.AddComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-            var img = go.AddComponent<Image>();
-            img.color = color;
-            img.raycastTarget = false;
-            return img;
-        }
-
-        private static void Stretch(RectTransform rt)
-        {
-            if (rt == null) return;
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.one;
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.offsetMin = rt.offsetMax = Vector2.zero;
-            rt.localRotation = Quaternion.identity;
-            rt.localScale = Vector3.one;
-        }
-
-        private static TextMeshProUGUI Text(string name, Transform parent, TMP_FontAsset font, float size, Color color,
-            Vector2 pos, float width, string text)
-        {
-            var go = new GameObject(name);
-            var rt = go.AddComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = pos;
-            rt.sizeDelta = new Vector2(width, size * 1.4f);
-            var t = go.AddComponent<TextMeshProUGUI>();
-            if (font != null) t.font = font;
-            t.fontSize = size;
-            t.color = color;
-            t.alignment = TextAlignmentOptions.Center;
-            t.enableWordWrapping = false;
-            t.overflowMode = TextOverflowModes.Overflow;
-            t.raycastTarget = false;
-            t.text = text;
-            return t;
-        }
-
-        /// <summary>The HUD font: from the RPM display, else any TMP text on the canvas.</summary>
-        private static TMP_FontAsset FindFont(Canvas canvas)
-        {
-            foreach (var rpm in Object.FindObjectsOfType<ContextUIEngineRPMDisplay>())
-            {
-                var t = rpm != null ? rpm.GetComponentInChildren<TMP_Text>(true) : null;
-                if (t != null && t.font != null) return t.font;
-            }
-            foreach (var t in canvas.rootCanvas.GetComponentsInChildren<TMP_Text>(true))
-                if (t != null && t.font != null) return t.font;
-            return null;
         }
     }
 }

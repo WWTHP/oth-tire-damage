@@ -49,6 +49,11 @@ namespace TireDamage
 
         internal static MelonPreferences_Entry<float> ServiceRadius;
         internal static MelonPreferences_Entry<bool> ShowToasts;
+        internal static MelonPreferences_Entry<bool> ShowHud;
+        internal static MelonPreferences_Entry<string> HudCorner;
+        internal static MelonPreferences_Entry<float> HudScale;
+        internal static MelonPreferences_Entry<float> HudOffsetX;
+        internal static MelonPreferences_Entry<float> HudOffsetY;
         internal static MelonPreferences_Entry<bool> LogHits;
         internal static MelonPreferences_Entry<bool> LogGrip;
         internal static MelonPreferences_Entry<bool> Multiplayer;
@@ -122,6 +127,12 @@ namespace TireDamage
             ServiceRadius = Float("ServiceRadius", 25f, 0f, 200f, "Service radius (m)",
                 "Stopping this close to a house or the mechanic replaces every tire (0 = only the game's repairs).");
             ShowToasts = Cat.CreateEntry("ShowToasts", true, "On-screen messages", "Show pops, repairs and services on screen.");
+            ShowHud = Cat.CreateEntry("ShowHud", true, "Tire HUD",
+                "Small panel in a screen corner: pressure, surface, and each tire's health and traction.");
+            HudCorner = Cat.CreateEntry("HudCorner", "TopLeft", "Tire HUD corner", "TopLeft, TopRight, BottomLeft or BottomRight.");
+            HudScale = Float("HudScale", 1f, 0.5f, 2f, "Tire HUD size", "Size of the tire HUD (x normal).");
+            HudOffsetX = Float("HudOffsetX", 24f, 0f, 1000f, "Tire HUD margin X", "Distance from the screen's side edge (HUD units, ~1080p pixels).");
+            HudOffsetY = Float("HudOffsetY", 24f, 0f, 1000f, "Tire HUD margin Y", "Distance from the screen's top or bottom edge (HUD units, ~1080p pixels).");
             LogHits = Cat.CreateEntry("LogHits", true, "Log hits", "Log every damaging hit (for tuning).");
             // New identifier (was "LogGrip", on by default in 0.6.0) so existing installs switch it off too.
             LogGrip = Cat.CreateEntry("LogGripSamples", false, "Log grip", "Every 3 s while driving below full pressure: ground and grip per tire (for tuning).");

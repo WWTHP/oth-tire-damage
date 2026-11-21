@@ -28,6 +28,7 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
 | Ground drag | drag is a field of the game's shared `GroundMaterialConfig` assets (one per ground type, used by every car this machine simulates). `GroundDrag` scales the loose types' `Drag` only while this machine runs the local car's physics (non-kinematic body) and no other player's car; otherwise, at full pressure or with the mod off, the originals are restored. `Car physics: …` logs which machine runs each car whenever it changes |
 | Per-wheel drag | when the ground types can't be changed (multiplayer, or `WheelDragAlways`), `CarFx` scales each wheel's `wheelState.groundResistance` instead, from VPP's `onPreDynamicsStep` and `onBeforeIntegrationStep` callbacks of that car (so it is per car). Whether VPP keeps the value is checked by the grip log (`res base→read`, "rewritten by the game" counts) |
 | Multiplayer | the host runs every car's physics with authority (0.6.1 logs: on the host, other players' cars `physics here, state authority here`; on a client, every car `physics here, state authority remote`: the client only predicts). A client's own grip writes do read back locally (×1.80 set, 1.78 read) but the host's result wins, so alone they don't drive its car. The client keeps applying them so its prediction matches the host. Each client sends its `CarTargets` (pressure → traction, cornering, drag; per wheel flat grip and radius) to the host every change (heartbeat 2 s); the host applies them to that player's car (`InputAuthority.Raw` = sender, non-kinematic body) and answers `Applied`. 8 s without updates → that car back to normal. Damage, wear and repairs stay on the driver's machine. Needs the mod on the host; `Multiplayer` setting |
+| HUD | always-on panel in a screen corner (`HudCorner`, default top left, 24 px margins, `HudScale`; `ShowHud` turns it off): pressure (amber below full, red below safe), the surface under the wheels (most common, or the two most common), and per tire health (or POPPED/RUPTURED) and traction as % of normal (blue above, amber below). Traction is the mod's multiplier on the game's grip (pressure, flats, ground), so 100 % = the game's normal tire. Follows the game's HUD (hidden with the tilt dials) and hides while the F4 screen is open |
 | Service | all tires new, spares back: the game's own repairs (hooks below), or stopping within 25 m of a house (Cabin) or the mechanic (Merchant POI) |
 
 ## Layout
@@ -44,6 +45,9 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
 | `Core/CarTargets.cs`, `Core/TireWire.cs` | what a car's tires do (built from settings), wire format and validation; Hello/Applied messages |
 | `GroundDrag.cs` | loose-ground drag at low pressure; per-car physics location check and log (CrashGuard stage `drag`) |
 | `TirePanel.cs` | F4 repair screen in the HUD canvas: cloned tilt-dial blurred glass, HUD font, tire tiles, mouse hold (CrashGuard stage `panel`) |
+| `TireHud.cs` | always-on corner HUD: PSI, surface, health and traction per tire (CrashGuard stage `hud`) |
+| `HudUi.cs` | shared uGUI helpers for both panels: cloned glass, HUD font, image/text, colours |
+| `Core/HudText.cs` | HUD text: surface names from `MaterialLabel`, main surface, traction %, corner setting parsing, wheel rows |
 | `Menu.cs`, `Toast.cs` | hub tab / F1 window (diagnostics, settings, key capture), IMGUI fallback of the repair screen, on-screen messages |
 | `HubTab.cs` | settings hub snippet (mod-template `snippets/generic/HubTab.cs.txt`) |
 | `Core/Pressure.cs` | pressure → grip, radius, low-pressure wear and hit factor; range sanitising; UI summary |
@@ -84,10 +88,17 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
    better at low pressure and drags on a flat. With `LogGripSamples` on, the host logs
    `Player N grip @8 PSI: …` lines: `res a/b→c/d` should show c/d = a/b × drag on loose ground.
 
+9. Tire HUD: top left, a glass panel like the tilt dials: `24 PSI` (amber), the surface
+   (`Snow`, `Snow / Gravel` when the wheels disagree, `Air` on a jump) and four tiles (FL/FR/RL/RR)
+   with health and `grip 130%` on snow at low pressure, `grip 100%` at full pressure. Pop a tire:
+   its tile turns red `POPPED`, `grip 60%`. Hidden with the game's HUD and while F4 is open. The hub
+   tab's Tire HUD section moves it to another corner and resizes it. Log: `Tire HUD built (4 tires, TopLeft, glass: cloned, …)`.
+
 ## Changelog
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 0.8.0 | 2026-11-20 | Tire HUD in a screen corner: pressure, surface, and each tire's health and traction, in the game's HUD style (`ShowHud`, `HudCorner`, `HudScale`, `HudOffsetX/Y`). 0.7.0 multiplayer confirmed working by the user (two players). |
 | 0.7.0 | 2026-11-20 | Multiplayer: the host runs every car's physics, so each player's pressure and flats now reach their car through the host (needs the mod on the host; `Multiplayer` setting). Loose-ground drag also works per wheel (`groundResistance`), used whenever the shared ground types can't be changed; `WheelDragAlways` tests it in single player. Grip log adds the ground resistance per wheel. |
 | 0.6.1 | 2026-11-19 | Grip logging (every 3 s below full pressure) is off by default (`LogGripSamples`; switch on in the hub tab for tuning). Confirmed in game: ground detection, grip above ×1, and loose-ground drag all work (single player). |
 | 0.6.0 | 2026-11-19 | Low pressure floats on loose ground: drag of mud, sand, snow and ice down to ×0.5 at the minimum (`LowPsiDrag`), only while this machine runs your car's physics and no other player's car (logged as `Car physics: …`). Release of 0.4.0–0.5.3. |

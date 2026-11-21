@@ -70,6 +70,10 @@ namespace TireDamage
             return w?.Grip ?? 1f;
         }
 
+        /// <summary>Ground label under tire <paramref name="i"/> (<see cref="HudText.Airborne"/> in the air).</summary>
+        public static int SurfaceAt(int i) =>
+            _fx != null && i >= 0 && i < _fx.Wheels.Count ? _fx.Wheels[i].Surface : HudText.Airborne;
+
         public static bool AnyDamage()
         {
             foreach (var w in Wheels)
