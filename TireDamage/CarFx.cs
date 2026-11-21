@@ -24,6 +24,7 @@ namespace TireDamage
             public float Read = 1f;
             public float Share = 0.5f;      // smoothed sideways share of the slip
             public bool Loose;              // on mud/sand/snow/ice
+            public int Surface = HudText.Airborne; // ground label under the wheel (HUD)
             public string Ground = "?";
             public float GroundGrip, GroundDrag;
             public float Drag = 1f;         // our ground drag factor
@@ -146,6 +147,7 @@ namespace TireDamage
             float raw = ws.grounded ? Pressure.LateralShare(ws.slipAngle, ws.peakSlipAngle, ws.slipRatio, ws.peakSlipRatio) : 0.5f;
             w.Share += (raw - w.Share) * Math.Min(1f, Time.fixedDeltaTime * 8f);
             if (ws.grounded) ReadGround(w, ws, readGround);
+            else w.Surface = HudText.Airborne;
             float target = _targets.WheelGrip(i, w.Loose, w.Share);
             w.Grip = target;
             w.Drag = _targets.WheelDrag(i, w.Loose);
@@ -166,10 +168,12 @@ namespace TireDamage
             if (cfg == null)
             {
                 w.Loose = false;
+                w.Surface = 0;
                 w.Ground = "none";
                 return;
             }
             var label = cfg.Label;
+            w.Surface = (int)label;
             w.Loose = Pressure.IsLoose((int)label);
             if (!details) return;
             w.Ground = label.ToString();

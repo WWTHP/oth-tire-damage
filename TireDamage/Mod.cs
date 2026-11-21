@@ -14,7 +14,7 @@ namespace TireDamage
     /// </summary>
     public sealed class Mod : MelonMod
     {
-        public const string Version = "0.7.0";
+        public const string Version = "0.8.0";
         internal static MelonLogger.Instance Log;
         private static readonly string[] Categories = { "TireDamage" };
         private int _physicsErrors;
@@ -39,6 +39,7 @@ namespace TireDamage
             if (Settings.Enabled.Value && !keyTaken) TirePanel.Update();
             else if (TirePanel.IsOpen && !Settings.Enabled.Value) TirePanel.Toggle();
             Tires.Update();
+            UpdateHud();
             UpdateGroundDrag();
             UpdateNet();
             if (Settings.Enabled.Value) Service.Update(HarmonyInstance);
@@ -55,7 +56,16 @@ namespace TireDamage
             CrashGuard.Exit("drag");
         }
 
-        private static int _dragErrors, _netErrors;
+        private static int _dragErrors, _netErrors, _hudErrors;
+
+        private static void UpdateHud()
+        {
+            try { TireHud.Update(); }
+            catch (System.Exception ex)
+            {
+                if (_hudErrors++ < 5) Log.Warning("Tire HUD: " + ex);
+            }
+        }
 
         private static void UpdateNet()
         {
