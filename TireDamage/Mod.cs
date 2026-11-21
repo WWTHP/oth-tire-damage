@@ -14,7 +14,7 @@ namespace TireDamage
     /// </summary>
     public sealed class Mod : MelonMod
     {
-        public const string Version = "0.6.1";
+        public const string Version = "0.7.0";
         internal static MelonLogger.Instance Log;
         private static readonly string[] Categories = { "TireDamage" };
         private int _physicsErrors;
@@ -24,6 +24,8 @@ namespace TireDamage
             Log = LoggerInstance;
             Settings.Init();
             CrashGuard.Init();
+            Net.Init();
+            Remote.Init();
             HubTab.Register("Tires", Menu.DrawBody, categories: Categories,
                 closed: Menu.SaveIfDirty, reset: Menu.ResetDefaults, order: 10, owner: "TireDamage " + Version);
             Log.Msg($"TireDamage {Version} loaded. {Settings.TireKey.Value} = tire repair screen; " +
@@ -38,6 +40,7 @@ namespace TireDamage
             else if (TirePanel.IsOpen && !Settings.Enabled.Value) TirePanel.Toggle();
             Tires.Update();
             UpdateGroundDrag();
+            UpdateNet();
             if (Settings.Enabled.Value) Service.Update(HarmonyInstance);
         }
 
@@ -52,17 +55,38 @@ namespace TireDamage
             CrashGuard.Exit("drag");
         }
 
-        private static int _dragErrors;
+        private static int _dragErrors, _netErrors;
+
+        private static void UpdateNet()
+        {
+            try
+            {
+                // Always on (even with the mod off) so the host can tell a client and put its car back.
+                Net.EnsureHooked();
+                Net.ProcessInbox();
+                Remote.Update();
+            }
+            catch (System.Exception ex)
+            {
+                if (_netErrors++ < 5) Log.Warning("Multiplayer: " + ex);
+            }
+        }
 
         public override void OnFixedUpdate()
         {
-            try { Tires.FixedUpdate(); }
+            try
+            {
+                Tires.FixedUpdate();
+                Remote.FixedUpdate();
+            }
             catch (System.Exception ex)
             {
                 // Runs every physics step: log the first few only.
                 if (_physicsErrors++ < 5) Log.Warning("Tire physics: " + ex);
             }
         }
+
+        public override void OnApplicationQuit() => Net.Unhook();
 
         public override void OnGUI()
         {

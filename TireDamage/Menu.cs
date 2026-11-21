@@ -158,6 +158,7 @@ namespace TireDamage
             Slider(Settings.LowPsiCornerGrip, "Cornering grip at lowest", 0.3f, 1f, "P0");
             Slider(Settings.LowPsiDrag, "Mud/sand/snow/ice drag at lowest", 0f, 1f, "P0");
             Info(GroundDrag.Describe());
+            Toggle(Settings.WheelDragAlways, "Per-wheel drag in single player too (test)");
             Slider(Settings.LowPsiRadius, "Radius at lowest", 0.7f, 1f, "P0");
             Slider(Settings.LowPsiWearPerKm, "Wear per km at lowest", 0f, 5f, "F2");
             Slider(Settings.LowPsiHitFactor, "Hit damage at lowest", 1f, 4f, "F2");
@@ -181,6 +182,8 @@ namespace TireDamage
             Toggle(Settings.ShowToasts, "On-screen messages");
             Toggle(Settings.LogHits, "Log every hit (tuning)");
             Toggle(Settings.LogGrip, "Log ground and grip below full pressure (tuning)");
+            Toggle(Settings.Multiplayer, "Multiplayer: send my tires to the host / apply other players' tires as host");
+            Info(Remote.Describe());
             if (CrashGuard.DisabledStages.Count > 0)
             {
                 Info("Switched off after the game crashed in it: " + string.Join(", ", CrashGuard.DisabledStages));

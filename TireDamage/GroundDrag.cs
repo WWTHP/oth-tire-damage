@@ -11,8 +11,8 @@ namespace TireDamage
     /// Drag lives on the game's <see cref="GroundMaterialConfig"/> assets, shared by every car this
     /// machine simulates, so it is only changed while this machine runs the local car's physics and
     /// no other player's car (<see cref="Pressure.MayChangeGroundDrag"/>); otherwise, and when the
-    /// pressure is full or the mod is off, the original values are restored. Which machine runs each
-    /// car's physics is logged whenever it changes.
+    /// pressure is full or the mod is off, the original values are restored and <see cref="CarFx"/>
+    /// scales drag per wheel instead. Which machine runs each car's physics is logged whenever it changes.
     /// </summary>
     internal static class GroundDrag
     {
@@ -63,13 +63,13 @@ namespace TireDamage
                     bool player = mine || obj.InputAuthority.IsRealPlayer;
                     if (mine && Car.Valid && body == Car.Body) own = here;
                     else if (player && !mine && here) others++;
-                    string who = mine ? "mine" : player ? $"player {obj.InputAuthority.PlayerId}" : "no driver";
+                    string who = mine ? "mine" : player ? $"player {obj.InputAuthority.Raw}" : "no driver";
                     parts.Add($"{vi.transform.root.name} ({who}, physics {(here ? "here" : "remote")}, state authority {(obj.HasStateAuthority ? "here" : "remote")})");
                 }
             }
             catch (Exception ex) { parts.Add("scan failed: " + ex.Message); }
             _othersHere = others;
-            _allowed = Pressure.MayChangeGroundDrag(own, others);
+            _allowed = !Settings.WheelDragAlways.Value && Pressure.MayChangeGroundDrag(own, others);
             var line = string.Join("; ", parts);
             if (line != _lastSim)
             {
@@ -134,7 +134,9 @@ namespace TireDamage
 
         /// <summary>For the hub tab.</summary>
         public static string Describe() =>
-            _allowed ? $"Loose-ground drag x{_applied:0.00} (only this car's physics runs here)"
-                     : $"Loose-ground drag unchanged: {(_othersHere > 0 ? "this machine also runs another player's car" : "this car's physics runs elsewhere")}";
+            _allowed ? $"Loose-ground drag x{_applied:0.00} on the ground types (only this car's physics runs here)"
+            : Settings.WheelDragAlways.Value ? "Loose-ground drag: per wheel (test setting on)"
+            : _othersHere > 0 ? "Loose-ground drag: per wheel (this machine also runs other players' cars)"
+            : "Loose-ground drag: per wheel (this car's physics runs elsewhere: the host applies your tires if it has the mod)";
     }
 }
