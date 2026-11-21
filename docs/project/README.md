@@ -3,7 +3,8 @@
 Project layer for `WWTHP/oth-tire-damage`. Game layer: [Over the Hill](../games/over-the-hill/README.md).
 
 Tires take damage from hard hits, pop, and rupture. Field repairs with mounted cosmetics; free
-replacement at houses, the mechanic and camp. Local car only, no networking.
+replacement at houses, the mechanic and camp. In multiplayer the host applies every player's
+pressure and flats to their car (see Multiplayer).
 
 Current version: `Mod.Version` in `TireDamage/Mod.cs`. Settings: `MelonPreferences.cfg [TireDamage]`,
 edited in the settings hub tab **Tires** (`HubTab.cs`: diagnostics + settings), or with **F1**
@@ -25,6 +26,8 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
 | Repair | on the F4 screen, click and hold a tire (car stopped, < 1 m/s): popped → tool kit patch, else a spare; ruptured → a spare |
 | Pressure | one PSI for all tires (`TirePsi`, 8–32): full (32) = the game's tire, untouched. Lower, linear to the minimum: traction on loose ground (`MaterialLabel` Mud, DeepMud, Sand, DeepSand, QuickSand, Snow, DeepSnow, ShallowSnow, Ice) up to ×1.3, cornering grip on any ground down to ×0.85, loose-ground drag down to ×0.5 (see Ground drag), wheel radius down to ×0.92 (lower top speed). Per wheel and fixed step the friction multiplier blends the two by the sideways share of the tire's slip (`slipAngle`/`peakSlipAngle` vs `slipRatio`/`peakSlipRatio`, smoothed). Below `SafePsi` (16), on hard ground only (not loose ground, where low pressure helps): wear up to 0.5 health/km and hit damage up to ×1.5 at the minimum (pinch flats); wear can pop a tire. Set on the F4 screen (−/+ or LB/RB, stopped) or the hub tab; kept across sessions |
 | Ground drag | drag is a field of the game's shared `GroundMaterialConfig` assets (one per ground type, used by every car this machine simulates). `GroundDrag` scales the loose types' `Drag` only while this machine runs the local car's physics (non-kinematic body) and no other player's car; otherwise, at full pressure or with the mod off, the originals are restored. `Car physics: …` logs which machine runs each car whenever it changes |
+| Per-wheel drag | when the ground types can't be changed (multiplayer, or `WheelDragAlways`), `CarFx` scales each wheel's `wheelState.groundResistance` instead, from VPP's `onPreDynamicsStep` and `onBeforeIntegrationStep` callbacks of that car (so it is per car). Whether VPP keeps the value is checked by the grip log (`res base→read`, "rewritten by the game" counts) |
+| Multiplayer | the host runs every car's physics with authority (0.6.1 logs: on the host, other players' cars `physics here, state authority here`; on a client, every car `physics here, state authority remote`: the client only predicts). A client's own grip writes do read back locally (×1.80 set, 1.78 read) but the host's result wins, so alone they don't drive its car. The client keeps applying them so its prediction matches the host. Each client sends its `CarTargets` (pressure → traction, cornering, drag; per wheel flat grip and radius) to the host every change (heartbeat 2 s); the host applies them to that player's car (`InputAuthority.Raw` = sender, non-kinematic body) and answers `Applied`. 8 s without updates → that car back to normal. Damage, wear and repairs stay on the driver's machine. Needs the mod on the host; `Multiplayer` setting |
 | Service | all tires new, spares back: the game's own repairs (hooks below), or stopping within 25 m of a house (Cabin) or the mechanic (Merchant POI) |
 
 ## Layout
@@ -36,6 +39,9 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
 | `Car.cs` | local car (input authority), `VPVehicleController`, mounted spare/tool parts |
 | `Tires.cs` | hit detection (FixedUpdate), wear, effects, hold-to-repair, service |
 | `Service.cs` | house/mechanic proximity; Harmony postfixes on `CarDamageSystem.HealOnCabinArrival`, `HealOnPointOfInterestArrival`, `PerformLocalPlayerHealingOperations(reason)` (HealedByPOI/HealedByCamping), `CampManager.RepairPartyCars`, `RPC_EndCamping` (installed late, CrashGuard stage `hooks`) |
+| `CarFx.cs` | applies `CarTargets` to one car's VPP physics: radius, friction multiplier per fixed step, per-wheel ground drag; restore |
+| `Net.cs`, `Remote.cs` | Fusion reliable-data link (copied from the fuel mod, key `TIRE`, no relay); client sends its targets, host applies them to other players' cars |
+| `Core/CarTargets.cs`, `Core/TireWire.cs` | what a car's tires do (built from settings), wire format and validation; Hello/Applied messages |
 | `GroundDrag.cs` | loose-ground drag at low pressure; per-car physics location check and log (CrashGuard stage `drag`) |
 | `TirePanel.cs` | F4 repair screen in the HUD canvas: cloned tilt-dial blurred glass, HUD font, tire tiles, mouse hold (CrashGuard stage `panel`) |
 | `Menu.cs`, `Toast.cs` | hub tab / F1 window (diagnostics, settings, key capture), IMGUI fallback of the repair screen, on-screen messages |
@@ -52,8 +58,8 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
   never rewrote it in testing; the mod still re-reads it each step and scales it. VPP keeps values
   above 1 (confirmed in game, 0.5.3 log).
 - Tire state is not saved, by design: new games start at a camp or the mechanic anyway.
-- Multiplayer: only the local car's wheels change; nothing is sent. Whether VPP applies the radius
-  for a client's car is untested.
+- Multiplayer: the driver works out the targets from their own settings, so each player's sliders
+  rule their own car. The client also applies them locally (harmless if its car is a network copy).
 
 ## Test plan (in game)
 
@@ -72,10 +78,17 @@ stick picks a tire, hold A repairs, B closes. The game binds every pad button, h
    `Car physics: …` line should show every other player's car with `physics remote`; if one says
    `physics here`, the drag change switches off ("Ground drag change off").
 
+8. Multiplayer (host and a client with the mod): host log `Player N has the tire mod.`,
+   `Player N's tires: 8 PSI, …`, `Player N's car Car_… (4 wheels) runs here: applying their tires`;
+   client log `The host applies your tire pressure and flats to your car`. The client's car climbs
+   better at low pressure and drags on a flat. With `LogGripSamples` on, the host logs
+   `Player N grip @8 PSI: …` lines: `res a/b→c/d` should show c/d = a/b × drag on loose ground.
+
 ## Changelog
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 0.7.0 | 2026-11-20 | Multiplayer: the host runs every car's physics, so each player's pressure and flats now reach their car through the host (needs the mod on the host; `Multiplayer` setting). Loose-ground drag also works per wheel (`groundResistance`), used whenever the shared ground types can't be changed; `WheelDragAlways` tests it in single player. Grip log adds the ground resistance per wheel. |
 | 0.6.1 | 2026-11-19 | Grip logging (every 3 s below full pressure) is off by default (`LogGripSamples`; switch on in the hub tab for tuning). Confirmed in game: ground detection, grip above ×1, and loose-ground drag all work (single player). |
 | 0.6.0 | 2026-11-19 | Low pressure floats on loose ground: drag of mud, sand, snow and ice down to ×0.5 at the minimum (`LowPsiDrag`), only while this machine runs your car's physics and no other player's car (logged as `Car physics: …`). Release of 0.4.0–0.5.3. |
 | 0.5.3 | 2026-11-18 | Grip diagnostics: `LogGrip` logs every 3 s, while driving below full pressure, the ground under each tire (label, its grip and drag), the cornering share and the multiplier set vs read back. The pressure grip now multiplies the game's own friction multiplier (re-read each step) instead of replacing it. |

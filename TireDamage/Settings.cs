@@ -51,6 +51,8 @@ namespace TireDamage
         internal static MelonPreferences_Entry<bool> ShowToasts;
         internal static MelonPreferences_Entry<bool> LogHits;
         internal static MelonPreferences_Entry<bool> LogGrip;
+        internal static MelonPreferences_Entry<bool> Multiplayer;
+        internal static MelonPreferences_Entry<bool> WheelDragAlways;
 
         public static void Init()
         {
@@ -123,6 +125,11 @@ namespace TireDamage
             LogHits = Cat.CreateEntry("LogHits", true, "Log hits", "Log every damaging hit (for tuning).");
             // New identifier (was "LogGrip", on by default in 0.6.0) so existing installs switch it off too.
             LogGrip = Cat.CreateEntry("LogGripSamples", false, "Log grip", "Every 3 s while driving below full pressure: ground and grip per tire (for tuning).");
+            Multiplayer = Cat.CreateEntry("Multiplayer", true, "Multiplayer",
+                "Send your tire pressure and flats to the host, and as host apply other players' tires to their cars " +
+                "(the host runs every car's physics). Needs the mod on the host.");
+            WheelDragAlways = Cat.CreateEntry("WheelDragAlways", false, "Per-wheel drag in single player (test)",
+                "Use the per-wheel ground drag (as in multiplayer) instead of changing the ground types, to test it alone.");
         }
 
         private static MelonPreferences_Entry<float> Float(string id, float def, float min, float max, string name, string desc) =>
